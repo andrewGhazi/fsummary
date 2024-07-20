@@ -206,7 +206,7 @@ fsummary = function(ddf,
     data.table::transpose() |>
     setNames(c("q5", "q95"))
 
-  stat_df = data.table(variable =        variables,
+  res = data.table(variable =        variables,
                        mean     =   fmean(no_dots, nthreads = .cores),
                        median   = fmedian(no_dots, nthreads = .cores),
                        sd       =     fsd(no_dots),
@@ -256,7 +256,7 @@ fsummary = function(ddf,
     ess_tail_df = data.table(variable = variables,
                              ess_tail = fess_tail(ddff, q_df, half_iter, two_chain, variables))
 
-    res = join(stat_df, rh_df,
+    res = join(res, rh_df,
                on = "variable",
                validate = "1:1", verbose = FALSE) |>
       join(ess_bulk_df,
