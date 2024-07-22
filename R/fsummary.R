@@ -30,10 +30,14 @@ frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
 facov = function(yc, vx) {
   # adapted from posterior::autocovariance()
   # pre-center, pre-compute variance
+  # use fftw::FFT
 
-  # N <- length(x)
   N = length(yc)
-  # vx <- var(x)
+
+  fft_fun = ifelse(N > 10^3.75 & N < 1e6,
+                   fftw::FFT,
+                   fft)
+
   if (vx == 0) {
     return(rep(0, N))
   }
@@ -41,7 +45,7 @@ facov = function(yc, vx) {
   Mt2 <- 2 * M
   # yc <- x - mx # mean(x)
   yc <- c(yc, rep.int(0, Mt2 - N))
-  ac <- Re(fft(abs(fft(yc))^2, inverse = TRUE)[1:N])
+  ac <- Re(fft_fun(abs(fft_fun(yc))^2, inverse = TRUE)[1:N])
 
   ac/ac[1] * vx * (N - 1)/N
 }

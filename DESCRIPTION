@@ -13,6 +13,7 @@ Imports:
     cli,
     collapse,
     data.table,
+    fftw,
     magrittr,
     matrixStats,
     posterior,
