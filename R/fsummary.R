@@ -27,14 +27,36 @@ frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
     setNames(c("variable", "rhat"))
 }
 
+facov = function(yc, vx) {
+  # adapted from posterior::autocovariance()
+  # pre-center, pre-compute variance
+
+  # N <- length(x)
+  N = length(yc)
+  # vx <- var(x)
+  if (vx == 0) {
+    return(rep(0, N))
+  }
+  M <- nextn(N)
+  Mt2 <- 2 * M
+  # yc <- x - mx # mean(x)
+  yc <- c(yc, rep.int(0, Mt2 - N))
+  ac <- Re(fft(abs(fft(yc))^2, inverse = TRUE)[1:N])
+
+  ac/ac[1] * vx * (N - 1)/N
+}
+
+
 fess = function(ddff, n_iter, n_chain, variables) {
 
   # posterior::autocovariance is actually amazingly fast
 
-  acov = ddff |> # This is by far the slowest part, 76% of time spent up through the first while loop is here
+  # This is by far the slowest part, 76% of time spent up through the first while loop is here
+  acov = ddff |>
     gby(`.chain`) |>
     mtt(across(variables,
-               posterior::autocovariance))
+               \(x) facov(x - fmean(x), # This is somehow faster than fwithin()
+                          fvar(x))))
 
   acov_means = acov |>
     gby(`.iteration`) |>
