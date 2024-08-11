@@ -85,7 +85,7 @@ bench::mark(fsummary = {fsummary(ddf, .cores = 1)},
 1 fsummary      2.24s    2.55s     0.388    1.66GB     5.12    10   132      25.8s 
 2 posterior     6.08s     6.3s     0.159    5.13GB     2.62    10   165      1.05m 
 ```
-
+ 
 ```{r, eval = FALSE}
 bench::mark(fsummary = {fsummary(ddf, .cores = 1,
                                  conv_metrics = FALSE)},
