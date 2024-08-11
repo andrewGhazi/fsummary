@@ -67,18 +67,18 @@ facov_jl = function(ddff, variables) {
 
   # using FFTW
   #  x = sin.(-5:.01:5)
-  #' @benchmark real(ifft(abs.(fft(x)).^2) .* 1001)
-  #' BenchmarkTools.Trial: 10000 samples with 1 evaluation.
-  #' Range (min … max):  36.220 μs …  1.684 ms  ┊ GC (min … max): 0.00% … 40.55%
-  #'   Time  (median):     38.201 μs              ┊ GC (median):    0.00%
-  #' Time  (mean ± σ):   41.061 μs ± 49.991 μs  ┊ GC (mean ± σ):  2.06% ±  1.66%
-  #'
-  #'   ▅██▇▅▄▂▂▁                                                  ▂
-  #' ▇██████████▇▇▆▇▅▅▆▅▃▄▄▁▁▃▃▃▃▁▁▁▃▃▁▃▄▃▃▁▃▁▃▁▁▁▁▁▁▁▃▁▁▁▅▄▇███ █
-  #' 36.2 μs      Histogram: log(frequency) by time      72.1 μs <
-  #'
-  #'   Memory estimate: 95.94 KiB, allocs estimate: 25.
-  #'
+  # @benchmark real(ifft(abs.(fft(x)).^2) .* 1001)
+  # BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+  # Range (min … max):  36.220 μs …  1.684 ms  ┊ GC (min … max): 0.00% … 40.55%
+  #   Time  (median):     38.201 μs              ┊ GC (median):    0.00%
+  # Time  (mean ± σ):   41.061 μs ± 49.991 μs  ┊ GC (mean ± σ):  2.06% ±  1.66%
+  #
+  #   ▅██▇▅▄▂▂▁                                                  ▂
+  # ▇██████████▇▇▆▇▅▅▆▅▃▄▄▁▁▃▃▃▃▁▁▁▃▃▁▃▄▃▃▁▃▁▃▁▁▁▁▁▁▁▃▁▁▁▅▄▇███ █
+  # 36.2 μs      Histogram: log(frequency) by time      72.1 μs <
+  #
+  #   Memory estimate: 95.94 KiB, allocs estimate: 25.
+  #
   # R was a median 42us
 
 }
@@ -121,17 +121,17 @@ fess = function(ddff, n_iter, n_chain, variables) {
   }
 
   # RcppArmadillo version about 1.75x faster
-  chain_list = ddff |>
+  acov = ddff |>
     gby(`.chain`) |>
     mtt(across(variables,
                fwithin)) |>
     fungroup() |>
-    slt(variables) |>
-    split(ddff$`.chain`) |>
+    slt(".chain", variables) |>
+    split(by = ".chain", keep.by = FALSE) |>
     lapply(.fftm_chain) |> # replace with future_map here
     rbindlist() |>
     setNames(variables) |>
-    add_vars(ddff |> slt(".iteration", ".chain", ".draw"))
+    add_vars(ddff |> slt(".chain", ".iteration", ".draw"))
 
   acov_means = acov |>
     gby(`.iteration`) |>
@@ -304,10 +304,10 @@ fsummary = function(ddf,
     setNames(c("q5", "q95"))
 
   res = data.table(variable =        variables,
-                       mean     =   fmean(no_dots, nthreads = .cores),
-                       median   = fmedian(no_dots, nthreads = .cores),
-                       sd       =     fsd(no_dots),
-                       mad      = 1.4826 * fmedian(abs(TRA(no_dots, fmedian(no_dots))))) |>
+                   mean     =   fmean(no_dots, nthreads = .cores),
+                   median   = fmedian(no_dots, nthreads = .cores),
+                   sd       =     fsd(no_dots),
+                   mad      = 1.4826 * fmedian(abs(TRA(no_dots, fmedian(no_dots))))) |>
     add_vars(q_df)
 
   # The hard/slow part: rhat & ess ----
@@ -333,8 +333,7 @@ fsummary = function(ddf,
           `.iteration` = data.table::fifelse(fold,
                                              `.iteration` - half_iter,
                                              `.iteration`)) |>
-      get_vars(c(variables, ".chain", ".iteration", ".draw")) |>
-      roworder(`.chain`, `.iteration`)
+      get_vars(c(variables, ".chain", ".iteration", ".draw"))
 
     z_scaled = ddff |>
       mtt(across(variables,
