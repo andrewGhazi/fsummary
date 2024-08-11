@@ -50,17 +50,88 @@ facov = function(yc, vx) {
   ac/ac[1] * vx * (N - 1)/N
 }
 
+facov_jl = function(ddff, variables) {
+  ddffM = ddff |>
+    gby(`.chain`) |>
+    fwithin() |>
+    slt(variables) |>
+    qM() # centered matrix of variables
+
+  var_df = ddff |>
+    gby(`.chain`) |>
+    fvar()
+
+  chain_i = ddf$`.chain`
+
+  # ^ pass these three things to a julia function that acov's by group.
+
+  # using FFTW
+  #  x = sin.(-5:.01:5)
+  #' @benchmark real(ifft(abs.(fft(x)).^2) .* 1001)
+  #' BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+  #' Range (min … max):  36.220 μs …  1.684 ms  ┊ GC (min … max): 0.00% … 40.55%
+  #'   Time  (median):     38.201 μs              ┊ GC (median):    0.00%
+  #' Time  (mean ± σ):   41.061 μs ± 49.991 μs  ┊ GC (mean ± σ):  2.06% ±  1.66%
+  #'
+  #'   ▅██▇▅▄▂▂▁                                                  ▂
+  #' ▇██████████▇▇▆▇▅▅▆▅▃▄▄▁▁▃▃▃▃▁▁▁▃▃▁▃▄▃▃▁▃▁▃▁▁▁▁▁▁▁▃▁▁▁▅▄▇███ █
+  #' 36.2 μs      Histogram: log(frequency) by time      72.1 μs <
+  #'
+  #'   Memory estimate: 95.94 KiB, allocs estimate: 25.
+  #'
+  # R was a median 42us
+
+}
 
 fess = function(ddff, n_iter, n_chain, variables) {
 
   # posterior::autocovariance is actually amazingly fast
 
-  # This is by far the slowest part, 76% of time spent up through the first while loop is here
-  acov = ddff |>
+  # This is by far the slowest part, 76% of time spent up through the first while loop is here. 2.23s for dyingforacup
+  # acov = ddff |>
+  #   gby(`.chain`) |>
+  #   mtt(across(variables,
+  #              \(x) facov(x - fmean(x), # This is somehow faster than fwithin()
+  #                         fvar(x))))
+
+  # The Rcpp version is about 80% faster. Pretty good. I think it could be even faster if
+  # the C++ function took the whole array at once, along with the indices corresponding to
+  # chains, but then it would be harder to use the simple fft() function from armadillo.
+  # Plus I think it would be harder to parallelize.
+
+  k = nextn(n_iter)
+
+  .pad_X = function(X, k) {
+    if (nrow(X) != 2*k) {
+      X = rbind(X, matrix(0, nrow = 2*k - nrow(X), ncol = ncol(X)))
+    }
+
+    return(X)
+  }
+
+  .fftm_chain = function(chain_dt) {
+    X = qM(chain_dt)
+
+    vx = fvar(X)
+
+    fX = fftm(X)
+
+    TRA(fX[1:k,], vx / fX[1,] * (k-1)/k, FUN = "*") |>
+      qDT()
+  }
+
+  # RcppArmadillo version about 1.75x faster
+  chain_list = ddff |>
     gby(`.chain`) |>
     mtt(across(variables,
-               \(x) facov(x - fmean(x), # This is somehow faster than fwithin()
-                          fvar(x))))
+               fwithin)) |>
+    fungroup() |>
+    slt(variables) |>
+    split(ddff$`.chain`) |>
+    lapply(.fftm_chain) |> # replace with future_map here
+    rbindlist() |>
+    setNames(variables) |>
+    add_vars(ddff |> slt(".iteration", ".chain", ".draw"))
 
   acov_means = acov |>
     gby(`.iteration`) |>
@@ -262,7 +333,8 @@ fsummary = function(ddf,
           `.iteration` = data.table::fifelse(fold,
                                              `.iteration` - half_iter,
                                              `.iteration`)) |>
-      get_vars(c(variables, ".chain", ".iteration", ".draw"))
+      get_vars(c(variables, ".chain", ".iteration", ".draw")) |>
+      roworder(`.chain`, `.iteration`)
 
     z_scaled = ddff |>
       mtt(across(variables,
