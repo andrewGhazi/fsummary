@@ -228,7 +228,7 @@ fsummary = function(ddf,
                     conv_metrics = TRUE,
                     .cores = getOption("mc.cores", 1)) {
 
-  if (!posterior::is_draws_df(ddf)) cli::cli_abort("Input must be a {.cls draws_df}")
+  if (!inherits(ddf, "draws_df")) cli::cli_abort("Input {.var ddf} must be a {.cls draws_df}")
 
   ddf = ddf |> qDT()
 

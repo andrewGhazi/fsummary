@@ -16,7 +16,6 @@ Imports:
     fftw,
     magrittr,
     matrixStats,
-    posterior,
     Rcpp,
     rlang,
     stats
