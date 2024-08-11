@@ -27,62 +27,6 @@ frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
     setNames(c("variable", "rhat"))
 }
 
-facov = function(yc, vx) {
-  # adapted from posterior::autocovariance()
-  # pre-center, pre-compute variance
-  # use fftw::FFT
-
-  N = length(yc)
-
-  fft_fun = ifelse(N > 10^3.75 & N < 1e6,
-                   fftw::FFT,
-                   fft)
-
-  if (vx == 0) {
-    return(rep(0, N))
-  }
-  M <- nextn(N)
-  Mt2 <- 2 * M
-  # yc <- x - mx # mean(x)
-  yc <- c(yc, rep.int(0, Mt2 - N))
-  ac <- Re(fft_fun(abs(fft_fun(yc))^2, inverse = TRUE)[1:N])
-
-  ac/ac[1] * vx * (N - 1)/N
-}
-
-facov_jl = function(ddff, variables) {
-  ddffM = ddff |>
-    gby(`.chain`) |>
-    fwithin() |>
-    slt(variables) |>
-    qM() # centered matrix of variables
-
-  var_df = ddff |>
-    gby(`.chain`) |>
-    fvar()
-
-  chain_i = ddf$`.chain`
-
-  # ^ pass these three things to a julia function that acov's by group.
-
-  # using FFTW
-  #  x = sin.(-5:.01:5)
-  # @benchmark real(ifft(abs.(fft(x)).^2) .* 1001)
-  # BenchmarkTools.Trial: 10000 samples with 1 evaluation.
-  # Range (min … max):  36.220 μs …  1.684 ms  ┊ GC (min … max): 0.00% … 40.55%
-  #   Time  (median):     38.201 μs              ┊ GC (median):    0.00%
-  # Time  (mean ± σ):   41.061 μs ± 49.991 μs  ┊ GC (mean ± σ):  2.06% ±  1.66%
-  #
-  #   ▅██▇▅▄▂▂▁                                                  ▂
-  # ▇██████████▇▇▆▇▅▅▆▅▃▄▄▁▁▃▃▃▃▁▁▁▃▃▁▃▄▃▃▁▃▁▃▁▁▁▁▁▁▁▃▁▁▁▅▄▇███ █
-  # 36.2 μs      Histogram: log(frequency) by time      72.1 μs <
-  #
-  #   Memory estimate: 95.94 KiB, allocs estimate: 25.
-  #
-  # R was a median 42us
-
-}
-
 fess = function(ddff, n_iter, n_chain, variables) {
 
   # posterior::autocovariance is actually amazingly fast
