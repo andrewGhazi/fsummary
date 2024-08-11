@@ -3,5 +3,7 @@
 export(fsummary)
 import(collapse)
 import(data.table, except = c(fdroplevels))
+importFrom(Rcpp,sourceCpp)
 importFrom(stats,qnorm)
 importFrom(stats,setNames)
+useDynLib(fsummary, .registration = TRUE)

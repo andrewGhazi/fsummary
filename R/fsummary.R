@@ -27,40 +27,55 @@ frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
     setNames(c("variable", "rhat"))
 }
 
-facov = function(yc, vx) {
-  # adapted from posterior::autocovariance()
-  # pre-center, pre-compute variance
-  # use fftw::FFT
-
-  N = length(yc)
-
-  fft_fun = ifelse(N > 10^3.75 & N < 1e6,
-                   fftw::FFT,
-                   fft)
-
-  if (vx == 0) {
-    return(rep(0, N))
-  }
-  M <- nextn(N)
-  Mt2 <- 2 * M
-  # yc <- x - mx # mean(x)
-  yc <- c(yc, rep.int(0, Mt2 - N))
-  ac <- Re(fft_fun(abs(fft_fun(yc))^2, inverse = TRUE)[1:N])
-
-  ac/ac[1] * vx * (N - 1)/N
-}
-
-
 fess = function(ddff, n_iter, n_chain, variables) {
 
   # posterior::autocovariance is actually amazingly fast
 
-  # This is by far the slowest part, 76% of time spent up through the first while loop is here
+  # This is by far the slowest part, 76% of time spent up through the first while loop is here. 2.23s for dyingforacup
+  # acov = ddff |>
+  #   gby(`.chain`) |>
+  #   mtt(across(variables,
+  #              \(x) facov(x - fmean(x), # This is somehow faster than fwithin()
+  #                         fvar(x))))
+
+  # The Rcpp version is about 80% faster. Pretty good. I think it could be even faster if
+  # the C++ function took the whole array at once, along with the indices corresponding to
+  # chains, but then it would be harder to use the simple fft() function from armadillo.
+  # Plus I think it would be harder to parallelize.
+
+  k = nextn(n_iter)
+
+  .pad_X = function(X, k) {
+    if (nrow(X) != 2*k) {
+      X = rbind(X, matrix(0, nrow = 2*k - nrow(X), ncol = ncol(X)))
+    }
+
+    return(X)
+  }
+
+  .fftm_chain = function(chain_dt) {
+    X = qM(chain_dt)
+
+    vx = fvar(X)
+
+    fX = fftm(X)
+
+    TRA(fX[1:k,], vx / fX[1,] * (k-1)/k, FUN = "*") |>
+      qDT()
+  }
+
+  # RcppArmadillo version about 1.75x faster
   acov = ddff |>
     gby(`.chain`) |>
     mtt(across(variables,
-               \(x) facov(x - fmean(x), # This is somehow faster than fwithin()
-                          fvar(x))))
+               fwithin)) |>
+    fungroup() |>
+    slt(".chain", variables) |>
+    split(by = ".chain", keep.by = FALSE) |>
+    lapply(.fftm_chain) |> # replace with future_map here
+    rbindlist() |>
+    setNames(variables) |>
+    add_vars(ddff |> slt(".chain", ".iteration", ".draw"))
 
   acov_means = acov |>
     gby(`.iteration`) |>
@@ -213,7 +228,7 @@ fsummary = function(ddf,
                     conv_metrics = TRUE,
                     .cores = getOption("mc.cores", 1)) {
 
-  if (!posterior::is_draws_df(ddf)) cli::cli_abort("Input must be a {.cls draws_df}")
+  if (!inherits(ddf, "draws_df")) cli::cli_abort("Input {.var ddf} must be a {.cls draws_df}")
 
   ddf = ddf |> qDT()
 
@@ -233,10 +248,10 @@ fsummary = function(ddf,
     setNames(c("q5", "q95"))
 
   res = data.table(variable =        variables,
-                       mean     =   fmean(no_dots, nthreads = .cores),
-                       median   = fmedian(no_dots, nthreads = .cores),
-                       sd       =     fsd(no_dots),
-                       mad      = 1.4826 * fmedian(abs(TRA(no_dots, fmedian(no_dots))))) |>
+                   mean     =   fmean(no_dots, nthreads = .cores),
+                   median   = fmedian(no_dots, nthreads = .cores),
+                   sd       =     fsd(no_dots),
+                   mad      = 1.4826 * fmedian(abs(TRA(no_dots, fmedian(no_dots))))) |>
     add_vars(q_df)
 
   # The hard/slow part: rhat & ess ----
