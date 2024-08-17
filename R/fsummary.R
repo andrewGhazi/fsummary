@@ -43,13 +43,13 @@ fess = function(ddff, n_iter, n_chain, variables) {
   # chains, but then it would be harder to use the simple fft() function from armadillo.
   # Plus I think it would be harder to parallelize.
 
-  .pad_X = function(X, k) {
-    if (nrow(X) != 2*k) {
-      X = rbind(X, matrix(0, nrow = 2*k - nrow(X), ncol = ncol(X)))
-    }
-
-    return(X)
-  }
+  # .pad_X = function(X, k) {
+  #   if (nrow(X) != 2*k) {
+  #     X = rbind(X, matrix(0, nrow = 2*k - nrow(X), ncol = ncol(X)))
+  #   }
+  #
+  #   return(X)
+  # }
 
   .check_for_nans = function(res, vx, call = rlang::env_parent()) {
     # fftm() returns NaN for parameters with 0 variance. This happens sometimes during
@@ -76,11 +76,11 @@ fess = function(ddff, n_iter, n_chain, variables) {
 
     vx = fvar(chain_dt)
 
-    X = qM(chain_dt) |> .pad_X(k)
+    X = qM(chain_dt) # |> .pad_X(k) # It's padded to 2k inside fftm()
 
-    fX = fftm(X)*(2*k)
+    fX = fftm(X, k)
 
-    res = TRA(fX[1:nr,,drop=FALSE], vx / fX[1,] * (nr-1)/nr, FUN = "*") |>
+    res = TRA(fX, vx / fX[1,] * (nr-1)/nr, FUN = "*") |>
       .check_for_nans(vx)
 
     res |> qDT()
@@ -311,28 +311,25 @@ fsummary = function(ddf,
     # nrow(ddff) != nrow(ddf) always. Odd number of iterations -> uneven folded chain
     # lengths -> posterior:::.split_chains drops some values.
 
-    z_scaled = ddff |>
+    z_scaled = ddff |> # 3.7s
       mtt(across(variables,
                  \(x) qnorm((rank_fun(x) - 3/8) / (nrow(ddff) - 2 * 3/8 + 1))))
 
-    ess_tail_df = data.table(variable = variables,
+    ess_tail_df = data.table(variable = variables, # 15.4s
                              ess_tail = fess_tail(ddff, q_df, half_iter, two_chain, variables))
 
     demedian_abs = \(x, y=fold_meds) abs(TRA(x, STATS = y))
 
     settransformv(ddff, variables, demedian_abs, apply = FALSE)
-    # settransformv(ddff, variables, abs, apply = FALSE)
 
-    z_scaled_folded = ddff |>
+    z_scaled_folded = ddff |> # 4.6s
       mtt(across(variables,
                  \(x) qnorm((rank_fun(x) - 3/8) / (nrow(ddff) - 2 * 3/8 + 1))))
 
     rh_df = frhat(z_scaled, z_scaled_folded, n_iter, n_chain, variables)
 
-    ess_bulk_df = data.table(variable = variables,
+    ess_bulk_df = data.table(variable = variables, # 6.3s
                              ess_bulk = fess(z_scaled, half_iter, two_chain, variables))
-
-
 
     res = join(res, rh_df,
                on = "variable",

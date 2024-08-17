@@ -12,19 +12,20 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // fftm
-arma::mat fftm(arma::mat x);
-RcppExport SEXP _fsummary_fftm(SEXP xSEXP) {
+arma::mat fftm(arma::mat x, int k);
+RcppExport SEXP _fsummary_fftm(SEXP xSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(fftm(x));
+    Rcpp::traits::input_parameter< int >::type k(kSEXP);
+    rcpp_result_gen = Rcpp::wrap(fftm(x, k));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_fsummary_fftm", (DL_FUNC) &_fsummary_fftm, 1},
+    {"_fsummary_fftm", (DL_FUNC) &_fsummary_fftm, 2},
     {NULL, NULL, 0}
 };
 
