@@ -43,8 +43,6 @@ fess = function(ddff, n_iter, n_chain, variables) {
   # chains, but then it would be harder to use the simple fft() function from armadillo.
   # Plus I think it would be harder to parallelize.
 
-  k = nextn(n_iter)
-
   .pad_X = function(X, k) {
     if (nrow(X) != 2*k) {
       X = rbind(X, matrix(0, nrow = 2*k - nrow(X), ncol = ncol(X)))
@@ -67,15 +65,18 @@ fess = function(ddff, n_iter, n_chain, variables) {
     res
   }
 
-  .fftm_chain = function(chain_dt, k) {
-    X = qM(chain_dt)
+  .fftm_chain = function(chain_dt) {
+    nr = nrow(chain_dt)
 
-    vx = fvar(X)
-    nz = vx != 0
+    k = nextn(nr)
 
-    fX = fftm(X)
+    vx = fvar(chain_dt)
 
-    res = TRA(fX[1:k,], vx / fX[1,] * (k-1)/k, FUN = "*") |>
+    X = qM(chain_dt) |> .pad_X(k)
+
+    fX = fftm(X)*2*k
+
+    res = TRA(fX[1:nr,,drop=FALSE], vx / fX[1,] * (nr-1)/nr, FUN = "*") |>
       .check_for_nans(vx)
 
     res |> qDT()
@@ -89,7 +90,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
     fungroup() |>
     slt(".chain", variables) |>
     split(by = ".chain", keep.by = FALSE) |>
-    lapply(.fftm_chain, k = k) |> # replace with future_map here
+    lapply(.fftm_chain) |> # replace with future_map here
     rbindlist() |>
     setNames(variables) |>
     add_vars(ddff |> slt(".chain", ".iteration", ".draw"))

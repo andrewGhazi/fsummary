@@ -21,7 +21,7 @@ arma::mat fftm(arma::mat x) {
 
   for(; it != it_end; ++it)
   {
-    (*it).real(pow(real(*it), 2) + pow(imag(*it), 2));
+    (*it).real((pow(real(*it), 2) + pow(imag(*it), 2)));
     (*it).imag(0);
   }
 
