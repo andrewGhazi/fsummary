@@ -53,15 +53,32 @@ fess = function(ddff, n_iter, n_chain, variables) {
     return(X)
   }
 
-  .fftm_chain = function(chain_dt) {
+  .check_for_nans = function(res, vx, call = rlang::env_parent()) {
+    nans = is.nan(res[1,])
+
+    if (any(nans)) {
+      if (any(nans & (vx != 0))) {
+        cli::cli_abort("Got NaN autocovariance on a chain with non-zero variance. WTF?! File a GitHub issue: {.url https://github.com/andrewGhazi/fsummary/issues}", call = call)
+      } else {
+        res[,vx == 0] = 0
+      }
+    }
+
+    res
+  }
+
+  .fftm_chain = function(chain_dt, k) {
     X = qM(chain_dt)
 
     vx = fvar(X)
+    nz = vx != 0
 
     fX = fftm(X)
 
-    TRA(fX[1:k,], vx / fX[1,] * (k-1)/k, FUN = "*") |>
-      qDT()
+    res = TRA(fX[1:k,], vx / fX[1,] * (k-1)/k, FUN = "*") |>
+      .check_for_nans(vx)
+
+    res |> qDT()
   }
 
   # RcppArmadillo version about 1.75x faster
@@ -72,7 +89,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
     fungroup() |>
     slt(".chain", variables) |>
     split(by = ".chain", keep.by = FALSE) |>
-    lapply(.fftm_chain) |> # replace with future_map here
+    lapply(.fftm_chain, k = k) |> # replace with future_map here
     rbindlist() |>
     setNames(variables) |>
     add_vars(ddff |> slt(".chain", ".iteration", ".draw"))
