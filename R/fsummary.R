@@ -52,6 +52,10 @@ fess = function(ddff, n_iter, n_chain, variables) {
   }
 
   .check_for_nans = function(res, vx, call = rlang::env_parent()) {
+    # fftm() returns NaN for parameters with 0 variance. This happens sometimes during
+    # ess_tail() calculations with short chains where an entire chain can sometimes fail
+    # to have even a single entry that falls below the 5th percentile (or above the 95th).
+
     nans = is.nan(res[1,])
 
     if (any(nans)) {
@@ -74,7 +78,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
 
     X = qM(chain_dt) |> .pad_X(k)
 
-    fX = fftm(X)*2*k
+    fX = fftm(X)*(2*k)
 
     res = TRA(fX[1:nr,,drop=FALSE], vx / fX[1,] * (nr-1)/nr, FUN = "*") |>
       .check_for_nans(vx)
@@ -288,32 +292,51 @@ fsummary = function(ddf,
     #draw data frame with fold
     ddff = ddf |>
       qDT() |>
-      mtt(fold = `.iteration` > half_iter) |>
+      mtt(fold = `.iteration` > ceiling(n_iter/2)) |>
       mtt(`.chain` = data.table::fifelse(fold,
                                          `.chain` + n_chain,
                                          `.chain`),
           `.iteration` = data.table::fifelse(fold,
-                                             `.iteration` - half_iter,
-                                             `.iteration`)) |>
+                                             `.iteration` - ceiling(n_iter/2),
+                                             `.iteration`))
+
+    fold_meds = ddff |>
+      slt(variables) |>
+      fmedian()
+
+    ddff = ddff |>
+      sbt(`.iteration` <= half_iter) |>
       get_vars(c(variables, ".chain", ".iteration", ".draw"))
+
+    # nrow(ddff) != nrow(ddf) always. Odd number of iterations -> uneven folded chain
+    # lengths -> posterior:::.split_chains drops some values.
 
     z_scaled = ddff |>
       mtt(across(variables,
-                 \(x) qnorm((rank_fun(x) - 3/8) / (n_iter*n_chain - 2 * 3/8 + 1))))
+                 \(x) qnorm((rank_fun(x) - 3/8) / (nrow(ddff) - 2 * 3/8 + 1))))
+
+    ess_tail_df = data.table(variable = variables,
+                             ess_tail = fess_tail(ddff, q_df, half_iter, two_chain, variables))
+
+    fold_var = \(x, x_med) abs(x - x_med)
+
+    for (i in 1:length(variables)) {
+      ddff[, c(variables[i]) := abs(ddff[[variables[i]]] - fold_meds[variables[i]]) ]
+      # settransformv(ddff, variables[i], )
+    }
 
     z_scaled_folded = ddff |>
+    #   mtt(across(variables,
+    #              \(x) abs(x - fmedian(x)))) |> # This is posterior:::fold_draws()
       mtt(across(variables,
-                 \(x) abs(x - fmedian(x)))) |> # This is posterior:::fold_draws()
-      mtt(across(variables,
-                 \(x) qnorm((rank_fun(x) - 3/8) / (n_iter*n_chain - 2 * 3/8 + 1))))
+                 \(x) qnorm((rank_fun(x) - 3/8) / (nrow(ddff) - 2 * 3/8 + 1))))
 
     rh_df = frhat(z_scaled, z_scaled_folded, n_iter, n_chain, variables)
 
     ess_bulk_df = data.table(variable = variables,
                              ess_bulk = fess(z_scaled, half_iter, two_chain, variables))
 
-    ess_tail_df = data.table(variable = variables,
-                             ess_tail = fess_tail(ddff, q_df, half_iter, two_chain, variables))
+
 
     res = join(res, rh_df,
                on = "variable",

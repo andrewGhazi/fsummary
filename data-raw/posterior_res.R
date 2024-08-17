@@ -4,11 +4,12 @@ library(fastverse)
 
 set.seed(123)
 
-n_iter = 50 # 101 to make sure the test hits the padding fn
+n_iter = 51 # 101 to make sure the test hits the padding fn and uneven split chains
 n_chain = 4
+n_param = 3
 
-test_ddf = rnorm(n_iter*n_chain*3) |>
-  matrix(ncol = 3) |>
+test_ddf = rnorm(n_iter*n_chain*n_param) |>
+  matrix(ncol = n_param) |>
   qDT() |>
   mtt(`.chain` = rep(1:4, each = n_iter),
       `.iteration`= rep(1:n_iter, times = n_chain),
