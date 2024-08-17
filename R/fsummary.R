@@ -58,7 +58,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
 
     vx = fvar(X)
 
-    fX = fftm4(X)
+    fX = fftm(X)
 
     TRA(fX[1:k,], vx / fX[1,] * (k-1)/k, FUN = "*") |>
       qDT()
