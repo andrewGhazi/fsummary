@@ -318,8 +318,10 @@ fsummary = function(ddf,
     ess_tail_df = data.table(variable = variables,
                              ess_tail = fess_tail(ddff, q_df, half_iter, two_chain, variables))
 
-    settransformv(ddff, variables, TRA, STATS = fold_meds, apply = FALSE)
-    settransformv(ddff, variables, abs, apply = FALSE)
+    demedian_abs = \(x, y=fold_meds) abs(TRA(x, STATS = y))
+
+    settransformv(ddff, variables, demedian_abs, apply = FALSE)
+    # settransformv(ddff, variables, abs, apply = FALSE)
 
     z_scaled_folded = ddff |>
       mtt(across(variables,
