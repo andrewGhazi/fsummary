@@ -318,16 +318,10 @@ fsummary = function(ddf,
     ess_tail_df = data.table(variable = variables,
                              ess_tail = fess_tail(ddff, q_df, half_iter, two_chain, variables))
 
-    fold_var = \(x, x_med) abs(x - x_med)
-
-    for (i in 1:length(variables)) {
-      ddff[, c(variables[i]) := abs(ddff[[variables[i]]] - fold_meds[variables[i]]) ]
-      # settransformv(ddff, variables[i], )
-    }
+    settransformv(ddff, variables, TRA, STATS = fold_meds, apply = FALSE)
+    settransformv(ddff, variables, abs, apply = FALSE)
 
     z_scaled_folded = ddff |>
-    #   mtt(across(variables,
-    #              \(x) abs(x - fmedian(x)))) |> # This is posterior:::fold_draws()
       mtt(across(variables,
                  \(x) qnorm((rank_fun(x) - 3/8) / (nrow(ddff) - 2 * 3/8 + 1))))
 
