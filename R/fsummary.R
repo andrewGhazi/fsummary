@@ -27,6 +27,81 @@ frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
     setNames(c("variable", "rhat"))
 }
 
+get_ch1 = function(split_chains, variables) {
+
+  .ch1_chain_dt = function(chain_dt) {
+    nr = nrow(chain_dt)
+
+    vx = fvar(chain_dt)
+
+    X = qM(chain_dt) # |> .pad_X(k) # It's padded to 2k inside fftm()
+
+    cov_head(X, n=1, offset=0)[1,]
+  }
+
+  split_chains |>
+    lapply(.ch1_chain_dt)
+}
+
+get_chain_info = function(ddff, n_cov, offset) {
+  ddff |>
+    slt(".chain", ".iteration", ".draw") |>
+    sbt(`.iteration` <= (n_cov + offset) &
+          `.iteration` >= (offset + 1))
+}
+
+get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info) {
+  .check_for_nans = function(res, vx, call = rlang::env_parent()) {
+    # fftm() returns NaN for parameters with 0 variance. This happens sometimes during
+    # ess_tail() calculations with short chains where an entire chain can sometimes fail
+    # to have even a single entry that falls below the 5th percentile (or above the 95th).
+
+    nans = is.nan(res[1,])
+
+    if (any(nans)) {
+      if (any(nans & (vx != 0))) {
+        cli::cli_abort("Got NaN autocovariance on a chain with non-zero variance. WTF?! File a GitHub issue: {.url https://github.com/andrewGhazi/fsummary/issues}", call = call)
+      } else {
+        res[,vx == 0] = 0
+      }
+    }
+
+    res
+  }
+
+  .cov_head = function(chain_dt, ch1 = ch1, n_cov=n_cov, offset=offset) {
+
+    nr = nrow(chain_dt)
+
+    vx = fvar(chain_dt)
+
+    X = qM(chain_dt) # |> .pad_X(k) # It's padded to 2k inside fftm()
+
+    chX = cov_head(X, n=n_cov, offset=offset)
+
+    res = TRA(chX, vx / ch1 * (nr-1)/nr, FUN = "*") |>
+      .check_for_nans(vx)
+
+    res |> qDT()
+  }
+
+  n_iter = nrow(split_chains[[1]])
+
+  acov = mapply(.cov_head,
+                split_chains, ch1_by_chain,
+                n_cov = min(n_cov, n_iter),
+                offset= min(offset, n_iter),
+                SIMPLIFY = FALSE) |> # replace with future_map here
+    rbindlist() |>
+    setNames(variables) |>
+    add_vars(chain_info)
+
+  acov |>
+    gby(`.iteration`) |>
+    smr(across(variables,
+               fmean))
+}
+
 fess = function(ddff, n_iter, n_chain, variables) {
 
   # posterior::autocovariance is actually amazingly fast
@@ -51,60 +126,37 @@ fess = function(ddff, n_iter, n_chain, variables) {
   #   return(X)
   # }
 
-  .check_for_nans = function(res, vx, call = rlang::env_parent()) {
-    # fftm() returns NaN for parameters with 0 variance. This happens sometimes during
-    # ess_tail() calculations with short chains where an entire chain can sometimes fail
-    # to have even a single entry that falls below the 5th percentile (or above the 95th).
-
-    nans = is.nan(res[1,])
-
-    if (any(nans)) {
-      if (any(nans & (vx != 0))) {
-        cli::cli_abort("Got NaN autocovariance on a chain with non-zero variance. WTF?! File a GitHub issue: {.url https://github.com/andrewGhazi/fsummary/issues}", call = call)
-      } else {
-        res[,vx == 0] = 0
-      }
-    }
-
-    res
-  }
-
-  .fftm_chain = function(chain_dt) {
-    nr = nrow(chain_dt)
-
-    k = nextn(nr)
-
-    vx = fvar(chain_dt)
-
-    X = qM(chain_dt) # |> .pad_X(k) # It's padded to 2k inside fftm()
-
-    fX = fftm(X, k)
-
-    res = TRA(fX, vx / fX[1,] * (nr-1)/nr, FUN = "*") |>
-      .check_for_nans(vx)
-
-    res |> qDT()
-  }
+  n_cov = 32
+  offset = 0
 
   # RcppArmadillo version about 1.75x faster
-  acov = ddff |>
+  # acov = ddff |>
+  #   gby(`.chain`) |>
+  #   mtt(across(variables,
+  #              fwithin)) |>
+  #   fungroup() |>
+  #   slt(".chain", variables) |>
+  #   split(by = ".chain", keep.by = FALSE) |>
+  #   lapply(.fftm_chain) |> # replace with future_map here
+  #   rbindlist() |>
+  #   setNames(variables) |>
+  #   add_vars(ddff |> slt(".chain", ".iteration", ".draw") )
+
+  split_chains = ddff |>
     gby(`.chain`) |>
     mtt(across(variables,
                fwithin)) |>
     fungroup() |>
     slt(".chain", variables) |>
-    split(by = ".chain", keep.by = FALSE) |>
-    lapply(.fftm_chain) |> # replace with future_map here
-    rbindlist() |>
-    setNames(variables) |>
-    add_vars(ddff |> slt(".chain", ".iteration", ".draw"))
+    split(by = ".chain", keep.by = FALSE)
 
-  acov_means = acov |>
-    gby(`.iteration`) |>
-    smr(across(variables,
-               fmean))
+  ch1_by_chain = get_ch1(split_chains, variables)
+  # ^ this gets re-used in the while loop(s) if additional covariance terms are needed
 
-  #
+  chain_info = get_chain_info(ddff, n_cov, offset)
+
+  acov_means = get_acov_means(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info)
+
   mean_var_df = acov_means |>
     sbt(`.iteration` == 1) |>
     pivot(ids = ".iteration") |>
@@ -127,7 +179,11 @@ fess = function(ddff, n_iter, n_chain, variables) {
   }
 
   # while loop 1 prep ----
-  tacov_mean_mat = acov_means[,..variables] |> qM() |> t() |> unname()
+  tacov_mean_mat = acov_means |>
+    slt(variables) |>
+    qM() |>
+    t() |>
+    unname()
 
   rh_m = matrix(0, nrow = length(variables), ncol = n_iter)
   t = 0
@@ -139,11 +195,44 @@ fess = function(ddff, n_iter, n_chain, variables) {
   epo = rhe+rho
   track = seq_along(variables)
   max_t = rep(2, length(variables))
+  offset = 0
+  n_cov_terms = 32
 
   # while loop 1 ----
   while (t < ((n_iter) - 5) && any(!is.nan(epo[track])) && any(epo[track] > 0)) {
     max_t[track] = t
     t = t + 2
+
+    if (t > (n_cov_terms - 2)) {
+      cli::cli_warn("Entered addl acov loop")
+      # oops, didn't collect enough acov terms, go get some more. This will be way slower
+      # than the fft approach if you need to do it more than once for many variables.
+      # TODO: test how often this happens with poorly mixed chains.
+
+      n_cov_terms = n_cov_terms + 32
+      offset = offset + 32
+
+      zm = matrix(0, nrow = nrow(tacov_mean_mat), ncol = 32)
+
+      addl_chain_info = get_chain_info(ddff, n_cov, offset)
+
+      addl_acov_means = get_acov_means(split_chains |> lapply(\(x) slt(x, variables[track])),
+                                       ch1_by_chain |> lapply(\(x) x[track]),
+                                       variables[track],
+                                       n_cov, offset,
+                                       addl_chain_info)
+
+      addl_tacov = addl_acov_means |>
+        slt(-`.iteration`) |>
+        qM() |>
+        t() |>
+        unname()
+
+      zm[track,] = addl_tacov
+
+      tacov_mean_mat = cbind(tacov_mean_mat, zm)
+
+    }
 
     rhe[track] = 1 - (mean_var_df$mv[track] - tacov_mean_mat[track,t+1]) / mean_var_df$var_p[track]
     rho[track] = 1 - (mean_var_df$mv[track] - tacov_mean_mat[track,t+2]) / mean_var_df$var_p[track]

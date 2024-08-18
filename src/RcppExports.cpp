@@ -23,9 +23,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cov_head
+arma::mat cov_head(arma::mat x, int n, int offset);
+RcppExport SEXP _fsummary_cov_head(SEXP xSEXP, SEXP nSEXP, SEXP offsetSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type offset(offsetSEXP);
+    rcpp_result_gen = Rcpp::wrap(cov_head(x, n, offset));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fsummary_fftm", (DL_FUNC) &_fsummary_fftm, 2},
+    {"_fsummary_cov_head", (DL_FUNC) &_fsummary_cov_head, 3},
     {NULL, NULL, 0}
 };
 

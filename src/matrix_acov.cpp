@@ -32,3 +32,23 @@ arma::mat fftm(arma::mat x, int k) {
 
   return (x);
 }
+
+// [[Rcpp::export]]
+arma::mat cov_head(arma::mat x, int n, int offset) {
+
+  int nc = x.n_cols;
+  int nr = x.n_rows;
+
+  arma::mat res (n, nc);
+
+  for (int j=0; j<nc; j++) {
+    for (int t=0; t < n; t++) {
+      int t_off = t+offset;
+      res(t,j) += sum(x.col(j).head(nr-t_off) % x.col(j).tail(nr-t_off)) ;
+    }
+  }
+
+  // res *= (nr-1)/nr;
+
+  return (res);
+}
