@@ -126,7 +126,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
   #   return(X)
   # }
 
-  n_cov = 32
+  n_cov = 16
   offset = 0
 
   # RcppArmadillo version about 1.75x faster
@@ -195,8 +195,9 @@ fess = function(ddff, n_iter, n_chain, variables) {
   epo = rhe+rho
   track = seq_along(variables)
   max_t = rep(2, length(variables))
-  offset = 0
-  n_cov_terms = 32
+
+  n_cov_terms = n_cov
+  offset_inc = 8
 
   # while loop 1 ----
   while (t < ((n_iter) - 5) && any(!is.nan(epo[track])) && any(epo[track] > 0)) {
@@ -204,22 +205,22 @@ fess = function(ddff, n_iter, n_chain, variables) {
     t = t + 2
 
     if (t > (n_cov_terms - 2)) {
-      cli::cli_warn("Entered addl acov loop")
+      cli::cli_warn("Entered addl acov loop with {length(track)} variable{?s}.")
       # oops, didn't collect enough acov terms, go get some more. This will be way slower
       # than the fft approach if you need to do it more than once for many variables.
       # TODO: test how often this happens with poorly mixed chains.
 
-      n_cov_terms = n_cov_terms + 32
-      offset = offset + 32
+      n_cov_terms = n_cov_terms + offset_inc
+      offset = offset + offset_inc
 
-      zm = matrix(0, nrow = nrow(tacov_mean_mat), ncol = 32)
+      zm = matrix(0, nrow = length(variables), ncol = offset_inc)
 
-      addl_chain_info = get_chain_info(ddff, n_cov, offset)
+      addl_chain_info = get_chain_info(ddff, offset_inc, offset)
 
       addl_acov_means = get_acov_means(split_chains |> lapply(\(x) slt(x, variables[track])),
                                        ch1_by_chain |> lapply(\(x) x[track]),
                                        variables[track],
-                                       n_cov, offset,
+                                       offset_inc, offset,
                                        addl_chain_info)
 
       addl_tacov = addl_acov_means |>
