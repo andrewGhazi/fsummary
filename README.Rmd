@@ -39,6 +39,7 @@ library(posterior)
 
 options(digits = 3)
 
+set.seed(123)
 ddf = rnorm(4e3*1000) |> # fake 1k draws of 100 example variables from each of 4 chains
   matrix(ncol = 1000) |> 
   qDT() |> 

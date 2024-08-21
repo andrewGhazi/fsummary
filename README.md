@@ -29,6 +29,7 @@ library(posterior)
 
 options(digits = 3)
 
+set.seed(123)
 ddf = rnorm(4e3*1000) |> # fake 1k draws of 100 example variables from each of 4 chains
   matrix(ncol = 1000) |> 
   qDT() |> 
@@ -39,14 +40,17 @@ ddf = rnorm(4e3*1000) |> # fake 1k draws of 100 example variables from each of 4
 
 fsummary(ddf) |> # instead of posterior::summarise_draws(ddf)
   head() 
-#>    variable     mean   median    sd   mad    q5   q95  rhat ess_bulk ess_tail
-#>      <char>    <num>    <num> <num> <num> <num> <num> <num>    <num>    <num>
-#> 1:       V1 -0.04636 -0.06079 1.013 1.009 -1.73  1.62     1     3871     4000
-#> 2:       V2 -0.00991 -0.01376 0.995 0.990 -1.67  1.62     1     3973     3867
-#> 3:       V3  0.01591  0.00210 1.007 1.000 -1.65  1.67     1     4138     3972
-#> 4:       V4 -0.00985 -0.01078 0.992 0.994 -1.63  1.60     1     4103     3881
-#> 5:       V5 -0.00786 -0.00513 0.998 1.021 -1.68  1.58     1     4079     4013
-#> 6:       V6  0.00435 -0.00394 1.001 1.013 -1.60  1.69     1     3934     3852
+#> Warning: Entered addl acov loop with 3 variables.
+#> Entered addl acov loop with 3 variables.
+#> Warning: Entered addl acov loop with 4 variables.
+#>    variable     mean    median    sd   mad    q5   q95  rhat ess_bulk ess_tail
+#>      <char>    <num>     <num> <num> <num> <num> <num> <num>    <num>    <num>
+#> 1:       V1  0.00733 -0.004966 0.993 0.975 -1.65  1.64     1     4161     3930
+#> 2:       V2 -0.00628 -0.007577 0.996 1.007 -1.63  1.60     1     4099     3978
+#> 3:       V3  0.00578 -0.010096 1.006 1.021 -1.65  1.66     1     4005     3807
+#> 4:       V4 -0.00163 -0.006376 1.001 0.983 -1.64  1.68     1     3851     3729
+#> 5:       V5 -0.03390 -0.041806 1.004 1.008 -1.66  1.63     1     3878     3891
+#> 6:       V6 -0.00366 -0.000109 1.000 1.013 -1.66  1.66     1     3547     3824
 ```
 
 On one core, it’s about 2-3 times faster than `summarise_draws()` when
