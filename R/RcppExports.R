@@ -5,3 +5,11 @@ fftm <- function(x, k) {
     .Call(`_fsummary_fftm`, x, k)
 }
 
+cov_head <- function(x, n, offset) {
+    .Call(`_fsummary_cov_head`, x, n, offset)
+}
+
+myrank <- function(v) {
+    .Call(`_fsummary_myrank`, v)
+}
+

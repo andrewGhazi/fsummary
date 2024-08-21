@@ -21,3 +21,27 @@ test_res = test_ddf |>
 
 usethis::use_data(test_ddf, overwrite = TRUE)
 usethis::use_data(test_res, overwrite = TRUE)
+
+# Large example - don't include the (big) ddf in the package for this one:
+
+n = 4000
+d = 1000
+
+set.seed(123)
+
+datM = runif(n*d) |>
+  matrix(ncol = d)
+
+if ((datM[1,1] - 0.2875775201246142) > 1e-8) cli::cli_abort("Something with the RNG went haywire, you didn't get the right simulated draws")
+
+big_ddf = datM |>
+  qDT() |>
+  mtt(`.chain` = rep(1:4, each = 1000),
+      `.iteration` = rep(1:1000, times = 4),
+      `.draw` = 1:4000) |>
+  posterior::as_draws_df()
+
+big_test_res = big_ddf |>
+  posterior::summarise_draws()
+
+usethis::use_data(big_test_res, overwrite = TRUE)

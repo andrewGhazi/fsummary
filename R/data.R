@@ -11,3 +11,10 @@
 #' @format ## `test_res`
 #' A tibble from posterior::summarise_draws(test_ddf)
 "test_res"
+
+#' Test summary result
+#'
+#' A big test summary result to check that fsummary gets the same numbers. No accompanying
+#' ddf, see the generating script in data-raw/
+#' @format ## `big_test_res` A tibble from posterior::summarise_draws(test_ddf)
+"big_test_res"
