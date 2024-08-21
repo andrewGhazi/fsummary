@@ -36,10 +36,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// myrank
+arma::vec myrank(arma::vec v);
+RcppExport SEXP _fsummary_myrank(SEXP vSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type v(vSEXP);
+    rcpp_result_gen = Rcpp::wrap(myrank(v));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fsummary_fftm", (DL_FUNC) &_fsummary_fftm, 2},
     {"_fsummary_cov_head", (DL_FUNC) &_fsummary_cov_head, 3},
+    {"_fsummary_myrank", (DL_FUNC) &_fsummary_myrank, 1},
     {NULL, NULL, 0}
 };
 

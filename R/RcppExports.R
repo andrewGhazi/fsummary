@@ -9,3 +9,7 @@ cov_head <- function(x, n, offset) {
     .Call(`_fsummary_cov_head`, x, n, offset)
 }
 
+myrank <- function(v) {
+    .Call(`_fsummary_myrank`, v)
+}
+

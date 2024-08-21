@@ -1,9 +1,7 @@
 // #include <Rcpp.h>
 #include <RcppArmadillo/Lightest>
 using namespace Rcpp;
-
-// #define ARMA_USE_FFTW3
-// on my machine, FFTW3 is a tiny bit slower, plus it's an additional dependency.
+using namespace arma;
 
 // [[Rcpp::depends(RcppArmadillo)]]
 
@@ -52,3 +50,84 @@ arma::mat cov_head(arma::mat x, int n, int offset) {
 
   return (res);
 }
+
+// [[Rcpp::export]]
+arma::vec myrank(arma::vec v) {
+
+  int n = v.n_elem;
+  uvec o = sort_index(v);
+  arma::vec res = conv_to< arma::vec >::from(sort_index(o) + 1);
+  arma::vec sv = v(o);
+
+  for (int i=1; i<n; i++) {
+    // scan through the sorted vector
+    int uniq_obs = 1;
+    int need_div = 0;
+
+    if (sv(i) == sv(i-1)) {
+      uniq_obs += 1;
+      need_div = 1;
+    }
+
+    if (need_div) {
+      // set the previous uniq_obs elements of res to their mean
+      double mv = 0;
+
+      for (int j=0; j<uniq_obs; j++) {
+        mv += res(o(i-j));
+      }
+
+      mv /= uniq_obs;
+
+      for (int j=0; j<uniq_obs; j++) {
+        res(o(i-j)) = mv;
+      }
+      uniq_obs = 1;
+      need_div = 0;
+    }
+
+  }
+
+  return (res.as_col());
+}
+
+// // [[Rcpp::export]]
+// DataFrame dfranks(DataFrame df) {
+//
+//   int nr = df.nrow();
+//   int nc = df.ncol();
+//   Function f2("qnorm");
+//
+//   for (int i=0; i<(nc-3); i++) {
+//     // skip the last three columns - these are chain information
+//
+//     // (myrank(df[i]) - 3.0/8.0) / (nr - (2*3.0/8.0) + 1)
+//     df[i] = as<arma::vec>(f2((- 3.0/8.0 + myrank(df[i]) ) / (nr - (2*3.0/8.0) + 1)));
+//
+//   }
+//
+//   return(df);
+// }
+// ^ This doesn't help at all
+
+// // // [[Rcpp::export]]
+// DataFrame df_zscale(DataFrame df) {
+//
+//   int nc = df.ncol();
+//   int nr = df.ncol();
+//   Function rank("rank");
+//   Function qnorm("qnorm");
+//
+//   for (int i=0; i<(nc-3); i++) {
+//
+//     // z_scaled = ddff |> # 3.7s
+//     // mtt(across(variables,
+//     //            \(x) qnorm((rank_fun(x) - 3/8) / (nrow(ddff) - 2 * 3/8 + 1))))
+//     // skip the last three columns - these are chain information
+//     NumericVector v = clone(df[i]);
+//     NumericVector rankv = rank(v);
+//     v = qnorm((rankv - 3.0/8.0) / (nr - (2.0 * 3.0/8.0) + 1.0));
+//   }
+//
+//   return(df);
+// }
