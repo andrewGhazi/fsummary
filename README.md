@@ -84,11 +84,10 @@ bench::mark(fsummary = {fsummary(ddf, .cores = 1,
             filter_gc = FALSE)
 ```
 
-
       expression      min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
       <bch:expr> <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
-    1 fsummary   195.09ms 196.19ms     5.02     92.1MB     1.00     5     1   996.85ms
-    2 posterior     1.14s    1.15s     0.860     759MB     2.24     5    13      5.82s
+    1 fsummary   192.84ms 199.21ms     4.97     92.1MB     2.48    10     5      2.01s
+    2 posterior     1.11s    1.16s     0.842     759MB     4.80    10    57     11.88s
 
 ![](man/figures/comparison.png)
 
