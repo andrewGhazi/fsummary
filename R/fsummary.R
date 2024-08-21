@@ -202,7 +202,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
 
   # while loop 1 ----
   while (t < ((n_iter) - 5) && any(!is.nan(epo[track])) && any(epo[track] > 0)) {
-    # print(epo)
+
     max_t[track] = t
     t = t + 2
 
@@ -253,7 +253,6 @@ fess = function(ddff, n_iter, n_chain, variables) {
       rh_m[track[ei],t + 2] = rho[track][ei]
     }
 
-    print(epo)
     track = track[ei]
   }
 
