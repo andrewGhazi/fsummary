@@ -40,9 +40,6 @@ ddf = rnorm(4e3*1000) |> # fake 1k draws of 100 example variables from each of 4
 
 fsummary(ddf) |> # instead of posterior::summarise_draws(ddf)
   head() 
-#> Warning: Entered addl acov loop with 3 variables.
-#> Entered addl acov loop with 3 variables.
-#> Warning: Entered addl acov loop with 4 variables.
 #>    variable     mean    median    sd   mad    q5   q95  rhat ess_bulk ess_tail
 #>      <char>    <num>     <num> <num> <num> <num> <num> <num>    <num>    <num>
 #> 1:       V1  0.00733 -0.004966 0.993 0.975 -1.65  1.64     1     4161     3930
@@ -53,26 +50,15 @@ fsummary(ddf) |> # instead of posterior::summarise_draws(ddf)
 #> 6:       V6 -0.00366 -0.000109 1.000 1.013 -1.66  1.66     1     3547     3824
 ```
 
-On one core, it’s about 2-3 times faster than `summarise_draws()` when
+On one core, it’s about 3 times faster than `summarise_draws()` when
 computing convergence metrics and 5-6 times faster without. It also uses
 less memory in both cases. A quick test on my machine:
 
 ``` r
 
 check_fun = function(x,y) {
-  waldo_res = waldo::compare(x, y, tolerance = 1e-6)
-
-  # fsummary returns a data.table instead of a tibble
-  non_classattr_diffs = grep(value = TRUE,
-                             "class\\(old|attr\\(old",
-                             waldo_res,
-                             invert = TRUE)
-
-  values_all_near = all(mapply(\(z, w) all((z - w) < 1e-6),
-                               x |> num_vars(),
-                               y |> num_vars()))
-
-  (length(non_classattr_diffs) == 0) & values_all_near
+  check_res = waldo::compare(x, y, tolerance = 1e-6, ignore_attr = TRUE)
+  length(check_res) == 0
 }
 
 bench::mark(fsummary = {fsummary(ddf, .cores = 1)},
@@ -82,10 +68,10 @@ bench::mark(fsummary = {fsummary(ddf, .cores = 1)},
             filter_gc = FALSE)
 ```
 
-      expression      min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time 
-      <bch:expr> <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm> 
-    1 fsummary      2.24s    2.55s     0.388    1.66GB     5.12    10   132      25.8s 
-    2 posterior     6.08s     6.3s     0.159    5.13GB     2.62    10   165      1.05m 
+      expression      min median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
+      <bch:expr> <bch:tm> <bch:>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
+    1 fsummary      1.71s  1.75s     0.527  996.79MB     2.06    10    39     18.96s
+    2 posterior     5.88s  6.05s     0.164    5.13GB     1.97    10   120      1.01m
 
 ``` r
 bench::mark(fsummary = {fsummary(ddf, .cores = 1,
@@ -97,16 +83,17 @@ bench::mark(fsummary = {fsummary(ddf, .cores = 1,
             filter_gc = FALSE)
 ```
 
-      expression      min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time 
-      <bch:expr> <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm> 
-    1 fsummary    182.7ms 183.54ms     5.33     92.1MB     2.13    10     4      1.87s 
-    2 posterior      1.1s    1.11s     0.872     759MB     2.88    10    33     11.47s 
+
+      expression      min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
+      <bch:expr> <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
+    1 fsummary   195.09ms 196.19ms     5.02     92.1MB     1.00     5     1   996.85ms
+    2 posterior     1.14s    1.15s     0.860     759MB     2.24     5    13      5.82s
 
 ![](man/figures/comparison.png)
 
 # TODO
 
-- parallelization
+- parallelization with `mirai`
 - faster convergence metrics with better ranking / qnorm (I’ve gotten
   the inverse normal transformation going twice as fast in Julia at
   least…)

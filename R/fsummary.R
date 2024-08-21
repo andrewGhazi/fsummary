@@ -208,7 +208,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
 
     if (t > (n_cov_terms - 2)) {
 
-      cli::cli_warn("Entered addl acov loop with {length(track)} variable{?s}.")
+      # cli::cli_warn("Entered addl acov loop with {length(track)} variable{?s}.")
       # oops, didn't collect enough acov terms, go get some more. This will be way slower
       # than the fft approach if you need to do it more than once for many variables.
       # TODO: test how often this happens with poorly mixed chains.
