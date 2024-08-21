@@ -94,6 +94,7 @@ bench::mark(fsummary = {fsummary(ddf, .cores = 1,
 # TODO
 
 - parallelization with `mirai`
-- faster convergence metrics with better ranking / qnorm (I’ve gotten
+- tests with badly converged chains
+- ~~faster convergence metrics with better ranking / qnorm (I’ve gotten
   the inverse normal transformation going twice as fast in Julia at
-  least…)
+  least…)~~
