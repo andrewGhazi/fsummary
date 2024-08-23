@@ -322,7 +322,7 @@ fess_tail = function(ddff, q_df, half_iter, two_chain, variables) {
 #' much unless you have loads of parameters and/or extremely long chains.
 #' @returns a data.table of summary metrics
 #' @export
-fsummary_par = function(ddf,
+fsummary = function(ddf,
                     conv_metrics = TRUE,
                     .cores = getOption("mc.cores", 1)) {
 
