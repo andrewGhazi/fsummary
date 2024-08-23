@@ -13,13 +13,11 @@ frhat_grp_df = function(gdf, n_iter, variables) {
 
 
 frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
-  # too_clever() only works when there's no ties for continuous parameter values
-  # sampled by stan. It breaks for parameters with small ranges that exhibit
-  # recurring values.
 
   half_iter = floor(n_iter/2)
 
-  frhat_bulk = frhat_grp_df(z_scaled, half_iter, variables)
+  frhat_bulk = frhat_grp_df(z_scaled       , half_iter, variables)
+
   frhat_tail = frhat_grp_df(z_scaled_folded, half_iter, variables)
 
   pmax(frhat_bulk, frhat_tail) |>
@@ -28,7 +26,6 @@ frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
 }
 
 get_ch1 = function(split_chains) {
-
 
   .ch1_chain_dt = function(chain_dt) {
     nr = nrow(chain_dt)
@@ -54,6 +51,7 @@ get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, 
     # fftm() returns NaN for parameters with 0 variance. This happens sometimes during
     # ess_tail() calculations with short chains where an entire chain can sometimes fail
     # to have even a single entry that falls below the 5th percentile (or above the 95th).
+    # TODO: check how cov_head handles 0 variance chains.
 
     nans = is.nan(res[1,])
 
@@ -90,7 +88,7 @@ get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, 
                 split_chains, ch1_by_chain,
                 n_cov = min(n_cov, n_iter),
                 offset= min(offset, n_iter),
-                SIMPLIFY = FALSE) |> # replace with future_map here
+                SIMPLIFY = FALSE) |>
     rbindlist() |>
     setNames(variables) |>
     add_vars(chain_info)
@@ -103,27 +101,13 @@ get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, 
 
 fess = function(ddff, n_iter, n_chain, variables) {
 
-  # posterior::autocovariance is actually amazingly fast
-
-  # This is by far the slowest part, 76% of time spent up through the first while loop is here. 2.23s for dyingforacup
+    # This is by far the slowest part, 76% of time spent up through the first while loop is here. 2.23s for dyingforacup
   # acov = ddff |>
   #   gby(`.chain`) |>
   #   mtt(across(variables,
   #              \(x) facov(x - fmean(x), # This is somehow faster than fwithin()
   #                         fvar(x))))
 
-  # The Rcpp version is about 80% faster. Pretty good. I think it could be even faster if
-  # the C++ function took the whole array at once, along with the indices corresponding to
-  # chains, but then it would be harder to use the simple fft() function from armadillo.
-  # Plus I think it would be harder to parallelize.
-
-  # .pad_X = function(X, k) {
-  #   if (nrow(X) != 2*k) {
-  #     X = rbind(X, matrix(0, nrow = 2*k - nrow(X), ncol = ncol(X)))
-  #   }
-  #
-  #   return(X)
-  # }
 
   n_cov = 16
   offset = 0
@@ -338,7 +322,7 @@ fess_tail = function(ddff, q_df, half_iter, two_chain, variables) {
 #' much unless you have loads of parameters and/or extremely long chains.
 #' @returns a data.table of summary metrics
 #' @export
-fsummary = function(ddf,
+fsummary_par = function(ddf,
                     conv_metrics = TRUE,
                     .cores = getOption("mc.cores", 1)) {
 
