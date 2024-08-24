@@ -100,7 +100,7 @@ get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, 
 
 fess = function(ddff, n_iter, n_chain, variables) {
 
-    # This is by far the slowest part, 76% of time spent up through the first while loop is here. 2.23s for dyingforacup
+  # This is by far the slowest part, 76% of time spent up through the first while loop is here. 2.23s for dyingforacup
   # acov = ddff |>
   #   gby(`.chain`) |>
   #   mtt(across(variables,
