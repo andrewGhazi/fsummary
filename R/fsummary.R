@@ -27,14 +27,13 @@ frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
     setNames(c("variable", "rhat"))
 }
 
-get_ch1 = function(split_chains, variables) {
+get_ch1 = function(split_chains) {
+
 
   .ch1_chain_dt = function(chain_dt) {
     nr = nrow(chain_dt)
 
-    vx = fvar(chain_dt)
-
-    X = qM(chain_dt) # |> .pad_X(k) # It's padded to 2k inside fftm()
+    X = qM(chain_dt)
 
     cov_head(X, n=1, offset=0)[1,]
   }
@@ -149,8 +148,9 @@ fess = function(ddff, n_iter, n_chain, variables) {
     fungroup() |>
     slt(".chain", variables) |>
     split(by = ".chain", keep.by = FALSE)
+  # ^ mirai will try to 2D map if these are data frames
 
-  ch1_by_chain = get_ch1(split_chains, variables)
+  ch1_by_chain = get_ch1(split_chains)
   # ^ this gets re-used in the while loop(s) if additional covariance terms are needed
 
   chain_info = get_chain_info(ddff, n_cov, offset)
