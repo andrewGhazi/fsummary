@@ -25,18 +25,13 @@ frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
     setNames(c("variable", "rhat"))
 }
 
+
+.ch1_chain_dt = function(chain_M) {
+  fsummary:::cov_head(chain_M[[1]], n=1, offset=0)[1,]
+}
+
 get_ch1 = function(split_chains) {
-
-  .ch1_chain_dt = function(chain_dt) {
-    nr = nrow(chain_dt)
-
-    X = qM(chain_dt)
-
-    cov_head(X, n=1, offset=0)[1,]
-  }
-
-  split_chains |>
-    lapply(.ch1_chain_dt)
+  lapply(split_chains, .ch1_chain_dt)
 }
 
 get_chain_info = function(ddff, n_cov, offset) {
@@ -46,57 +41,61 @@ get_chain_info = function(ddff, n_cov, offset) {
           `.iteration` >= (offset + 1))
 }
 
-get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info) {
-  .check_for_nans = function(res, vx, call = rlang::env_parent()) {
-    # fftm() returns NaN for parameters with 0 variance. This happens sometimes during
-    # ess_tail() calculations with short chains where an entire chain can sometimes fail
-    # to have even a single entry that falls below the 5th percentile (or above the 95th).
-    # TODO: check how cov_head handles 0 variance chains.
+.check_for_nans = function(res, vx, call = rlang::env_parent()) {
+  # fftm() returns NaN for parameters with 0 variance. This happens sometimes during
+  # ess_tail() calculations with short chains where an entire chain can sometimes fail
+  # to have even a single entry that falls below the 5th percentile (or above the 95th).
+  # TODO: check how cov_head handles 0 variance chains.
 
-    nans = is.nan(res[1,])
+  nans = is.nan(res[1,])
 
-    if (any(nans)) {
-      if (any(nans & (vx != 0))) {
-        cli::cli_abort("Got NaN autocovariance on a chain with non-zero variance. WTF?! File a GitHub issue: {.url https://github.com/andrewGhazi/fsummary/issues}", call = call)
-      } else {
-        res[,vx == 0] = 0
-      }
+  if (any(nans)) {
+    if (any(nans & (vx != 0))) {
+      cli::cli_abort("Got NaN autocovariance on a chain with non-zero variance. WTF?! File a GitHub issue: {.url https://github.com/andrewGhazi/fsummary/issues}",
+                     call = call)
+    } else {
+      res[,vx == 0] = 0
     }
-
-    res
   }
 
-  .cov_head = function(chain_dt, ch1 = ch1, n_cov=n_cov, offset=offset) {
+  res
+}
 
-    nr = nrow(chain_dt)
+.cov_head = function(chain_Ml, ch1, n_cov=n_cov, offset=offset) {
 
-    vx = fvar(chain_dt)
+  M = chain_Ml[[1]]
 
-    X = qM(chain_dt) # |> .pad_X(k) # It's padded to 2k inside fftm()
+  nr = nrow(M)
 
-    chX = cov_head(X, n=n_cov, offset=offset)
+  vx = collapse::fvar(M)
 
-    res = TRA(chX, vx / ch1 * (nr-1)/nr, FUN = "*") |>
-      .check_for_nans(vx)
+  chX = fsummary:::cov_head(M, n=n_cov, offset=offset)
 
-    res |> qDT()
-  }
+  res = collapse::TRA(chX, vx / ch1 * (nr-1)/nr, FUN = "*") |>
+    fsummary:::.check_for_nans(vx)
+
+  res |> collapse::qDT()
+}
+
+get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info) {
 
   n_iter = nrow(split_chains[[1]])
 
-  acov = mapply(.cov_head,
-                split_chains, ch1_by_chain,
-                n_cov = min(n_cov, n_iter),
-                offset= min(offset, n_iter),
-                SIMPLIFY = FALSE) |>
-    rbindlist() |>
-    setNames(variables) |>
-    add_vars(chain_info)
+  minn = min(n_cov, n_iter)
+  mino = min(offset, n_iter)
+
+  acov = mirai::mirai_map(list(split_chains, ch1_by_chain),
+                          .cov_head,
+                          .args = list(n_cov = minn, offset = mino))[]
 
   acov |>
+    rbindlist() |>
+    setNames(variables) |>
+    add_vars(chain_info) |>
     gby(`.iteration`) |>
     smr(across(variables,
-               fmean))
+               fmean)) |>
+    qDT()
 }
 
 fess = function(ddff, n_iter, n_chain, variables) {
@@ -131,7 +130,8 @@ fess = function(ddff, n_iter, n_chain, variables) {
                fwithin)) |>
     fungroup() |>
     slt(".chain", variables) |>
-    split(by = ".chain", keep.by = FALSE)
+    split(by = ".chain", keep.by = FALSE) |>
+    lapply(\(x) list(qM(x)))
   # ^ mirai will try to 2D map if these are data frames
 
   ch1_by_chain = get_ch1(split_chains)
@@ -203,7 +203,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
 
       addl_chain_info = get_chain_info(ddff, offset_inc, offset)
 
-      addl_acov_means = get_acov_means(split_chains |> lapply(\(x) slt(x, variables[track])),
+      addl_acov_means = get_acov_means(split_chains |> lapply(\(x) list(x[[1]][,variables[track],drop=FALSE])),
                                        ch1_by_chain |> lapply(\(x) x[track]),
                                        variables[track],
                                        offset_inc, offset,

@@ -11,18 +11,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// fftm
-arma::mat fftm(arma::mat x, int k);
-RcppExport SEXP _fsummary_fftm(SEXP xSEXP, SEXP kSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type k(kSEXP);
-    rcpp_result_gen = Rcpp::wrap(fftm(x, k));
-    return rcpp_result_gen;
-END_RCPP
-}
 // cov_head
 arma::mat cov_head(arma::mat x, int n, int offset);
 RcppExport SEXP _fsummary_cov_head(SEXP xSEXP, SEXP nSEXP, SEXP offsetSEXP) {
@@ -49,7 +37,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_fsummary_fftm", (DL_FUNC) &_fsummary_fftm, 2},
     {"_fsummary_cov_head", (DL_FUNC) &_fsummary_cov_head, 3},
     {"_fsummary_myrank", (DL_FUNC) &_fsummary_myrank, 1},
     {NULL, NULL, 0}
