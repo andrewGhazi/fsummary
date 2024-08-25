@@ -27,7 +27,7 @@ frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
 
 
 .ch1_chain_dt = function(chain_M) {
-  fsummary:::cov_head(chain_M[[1]], n=1, offset=0)[1,]
+  fsummary:::cov_head(chain_M, n=1, offset=0)[1,]
 }
 
 get_ch1 = function(split_chains) {
@@ -63,7 +63,7 @@ get_chain_info = function(ddff, n_cov, offset) {
 
 .cov_head = function(chain_Ml, ch1, n_cov=n_cov, offset=offset) {
 
-  M = chain_Ml[[1]]
+  M = chain_Ml
 
   nr = nrow(M)
 
@@ -79,23 +79,39 @@ get_chain_info = function(ddff, n_cov, offset) {
 
 get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info) {
 
-  n_iter = nrow(split_chains[[1]])
+  n_iter = nrow(split_chains)
 
   minn = min(n_cov, n_iter)
   mino = min(offset, n_iter)
 
-  acov = mirai::mirai_map(list(split_chains, ch1_by_chain),
-                          .cov_head,
-                          .args = list(n_cov = minn, offset = mino))[]
+  # acov = mirai::mirai_map(list(split_chains, ch1_by_chain),
+  #                         .cov_head,
+  #                         .args = list(n_cov = minn, offset = mino))[]
 
-  acov |>
-    rbindlist() |>
-    setNames(variables) |>
-    add_vars(chain_info) |>
-    gby(`.iteration`) |>
-    smr(across(variables,
-               fmean)) |>
-    qDT()
+  acov = mapply(.cov_head,
+                split_chains,
+                ch1_by_chain,
+                MoreArgs = list(n_cov = minn, offset = mino),
+                SIMPLIFY = FALSE)
+
+  names(acov) = as.character(unique(chain_info$.chain))
+
+  a1 = collapse::rowbind(acov, use.names = FALSE)
+  a2 = magrittr::set_colnames(a1, variables)
+  a3 = collapse::add_vars(a2, chain_info)
+  a3[,lapply(.SD, mean), by = ".iteration", .SDcols = variables]
+  # data.table::`[.data.table`(a3,,lapply(data.table::.SD, data.table:::gmean),
+  #                            by = ".iteration", .SDcols = variables)
+  # # a4 = collapse::gby(a3, ".iteration")
+  # # a5 = collapse::smr(a4, collapse::fmean, .cols = variables)
+  # # collapse::qDT(a5)
+
+  # acov |>
+  #   collapse::rowbind(use.names = FALSE) |>
+  #   magrittr::set_colnames(variables) |>
+  #   collapse::add_vars(chain_info) |>
+  #   collapse::gby(".iteration") |>
+  #   collapse::fmean(use.g.names = FALSE)
 }
 
 fess = function(ddff, n_iter, n_chain, variables) {
@@ -124,48 +140,53 @@ fess = function(ddff, n_iter, n_chain, variables) {
   #   setNames(variables) |>
   #   add_vars(ddff |> slt(".chain", ".iteration", ".draw") )
 
-  split_chains = ddff |>
-    gby(`.chain`) |>
-    mtt(across(variables,
-               fwithin)) |>
-    fungroup() |>
-    slt(".chain", variables) |>
-    split(by = ".chain", keep.by = FALSE) |>
-    lapply(\(x) list(qM(x)))
-  # ^ mirai will try to 2D map if these are data frames
+  split_chains = fsummary:::center_split_df(ddff |> collapse::slt(variables),
+                                            ddff$.chain - 1,
+                                            n_chain,
+                                            n_iter)
 
-  ch1_by_chain = get_ch1(split_chains)
+  for (i in 1:n_chain) {
+    split_chains[[i]] = collapse::setColnames(split_chains[[i]], variables)
+  }
+
+  ch1_by_chain = fsummary:::get_ch1(split_chains)
   # ^ this gets re-used in the while loop(s) if additional covariance terms are needed
 
-  chain_info = get_chain_info(ddff, n_cov, offset)
+  chain_info = fsummary:::get_chain_info(ddff, n_cov, offset)
 
-  acov_means = get_acov_means(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info)
+  acov_means = fsummary:::get_acov_means(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info)
 
   mean_var_df = acov_means |>
-    sbt(`.iteration` == 1) |>
-    pivot(ids = ".iteration") |>
-    mtt(mv = value * n_iter / (n_iter - 1),
+    collapse::sbt(`.iteration` == 1) |>
+    collapse::pivot(ids = ".iteration") |>
+    collapse::mtt(mv = value * n_iter / (n_iter - 1),
         var_p = value) # it seems like posterior:::.ess has a redundant multiply
 
   if (n_chain > 1) {
     # should be possible to do this block and the command above without pivots,
     # which might be expensive for many variables. But they're small pivots (1xD), so
     # probably high-hanging fruit.
-    chain_means = ddff |>
-      gby(`.chain`) |>
-      smr(across(variables,
-                 fmean)) |>
-      smr(across(variables,
-                 fvar)) |>
-      pivot()
+    # chain_means = ddff |>
+    #   collapse::gby(`.chain`) |>
+    #   collapse::smr(collapse::across(variables,
+    #              collapse::fmean)) |>
+    #   collapse::smr(collapse::across(variables,
+    #              collapse::fvar)) |>
+    #   collapse::pivot()
 
-    mean_var_df[,var_p := var_p +  chain_means$value]
+    chain_means = slt(ddff, ".chain", variables)[,lapply(.SD, mean),by=".chain",.SDcols = variables]
+    chain_mean_var = chain_means[,lapply(.SD, var),.SDcols = variables] |>
+      collapse::pivot()
+
+
+    mean_var_df[,var_p := var_p +  chain_mean_var$value]
+    # data.table::`[.data.table`(mean_var_df, , data.table::`:=`(var_p = var_p +  chain_means$value))
   }
 
   # while loop 1 prep ----
   tacov_mean_mat = acov_means |>
-    slt(variables) |>
-    qM() |>
+    collapse::slt(variables) |>
+    collapse::qM() |>
     t() |>
     unname()
 
@@ -201,17 +222,17 @@ fess = function(ddff, n_iter, n_chain, variables) {
 
       zm = matrix(0, nrow = length(variables), ncol = offset_inc)
 
-      addl_chain_info = get_chain_info(ddff, offset_inc, offset)
+      addl_chain_info = fsummary:::get_chain_info(ddff, offset_inc, offset)
 
-      addl_acov_means = get_acov_means(split_chains |> lapply(\(x) list(x[[1]][,variables[track],drop=FALSE])),
-                                       ch1_by_chain |> lapply(\(x) x[track]),
-                                       variables[track],
-                                       offset_inc, offset,
-                                       addl_chain_info)
+      addl_acov_means = fsummary:::get_acov_means(split_chains |> lapply(\(x) list(x[,variables[track],drop=FALSE])),
+                                                  ch1_by_chain |> lapply(\(x) x[track]),
+                                                  variables[track],
+                                                  offset_inc, offset,
+                                                  addl_chain_info)
 
       addl_tacov = addl_acov_means |>
-        slt(-`.iteration`) |>
-        qM() |>
+        collapse::slt(-`.iteration`) |>
+        collapse::qM() |>
         t() |>
         unname()
 
@@ -245,8 +266,8 @@ fess = function(ddff, n_iter, n_chain, variables) {
   to_add = which(rhe_pos)
   rh_m[cbind(to_add, max_t[rhe_pos]+1)] = rhe_final[rhe_pos]
 
-  mt_df = data.table(i = seq_along(variables),
-                     mt = max_t)
+  mt_df = data.table::data.table(i = seq_along(variables),
+                                 mt = max_t)
 
   # while loop 2 ----
 
@@ -283,7 +304,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
 
   for (i in seq_along(variables)) {
     imax = max_t[i]
-    tau_hat[i] = -1 + 2 * fsum(rh_m_t[1:imax,i]) + rh_m_t[imax+1,i]
+    tau_hat[i] = -1 + 2 * collapse::fsum(rh_m_t[1:imax,i]) + rh_m_t[imax+1,i]
   }
 
   if (any(tau_hat < tau_bound)) cli::cli_warn("ESS capped to avoid unstable estimates for {variables[which(tau_hat < tau_bound)]}")
@@ -313,6 +334,32 @@ fess_tail = function(ddff, q_df, half_iter, two_chain, variables) {
   pmin(ess_tail5, ess_tail95)
 }
 
+fess_bulk = function(ddff, n_iter, n_chain, variables) {
+
+  n_daemon = mirai::status()$daemons |> nrow() |>
+    magrittr::multiply_by(2)
+
+  chunks = data.table::data.table(i = rep(1:n_daemon,
+                                          length.out = length(variables)),
+                                  v = variables) |>
+    collapse::roworder(i) |>
+    split(by = "i")
+
+  input_list = list(lapply(chunks,
+                      \(x) ddff |> slt(x$v,  ".chain"   ,  ".iteration" ,".draw" )),
+                    lapply(chunks, \(x) x$v))
+
+  mirai_output = mirai::mirai_map(input_list,
+                                  fess,
+                                  .args = list(n_iter = n_iter,
+                                               n_chain = n_chain))[]
+
+}
+
+z_scale = function(x, n) {
+  qnorm((fsummary:::myrank(x)[,1] - 3/8) / (n - 2 * 3/8 + 1))
+}
+
 #' Fast summary function for cmdstanr draws
 #'
 #' @param ddf a draws_df
@@ -324,8 +371,8 @@ fess_tail = function(ddff, q_df, half_iter, two_chain, variables) {
 #' @export
 fsummary = function(ddf,
                     conv_metrics = TRUE,
-                    .cores = getOption("mc.cores", 1)) {
-
+                    .cores = getOption("mc.cores", 1), verbose = FALSE) {
+  strt = Sys.time()
   if (!inherits(ddf, "draws_df")) cli::cli_abort("Input {.var ddf} must be a {.cls draws_df}")
 
   ddf = ddf |> qDT()
@@ -352,6 +399,7 @@ fsummary = function(ddf,
                    mad      = 1.4826 * fmedian(abs(TRA(no_dots, fmedian(no_dots))))) |>
     add_vars(q_df)
 
+  if (verbose) cli::cli_alert("stats {round(digits = 2, Sys.time() - strt)}")
   # The hard/slow part: rhat & ess ----
 
   if (conv_metrics) {
@@ -364,6 +412,8 @@ fsummary = function(ddf,
     # dependency and some approximation error. Combining both ranking and qnorm in
     # a Cpp function would probably be substantially better. Especially if it took the
     # variables in grouped long format (would require a pivot). Above my pay grade.
+
+    strt = Sys.time()
 
     #draw data frame with fold
     ddff = ddf |>
@@ -384,6 +434,8 @@ fsummary = function(ddf,
       sbt(`.iteration` <= half_iter) |>
       get_vars(c(variables, ".chain", ".iteration", ".draw"))
 
+    if (verbose) cli::cli_alert("ddff setup {round(digits = 2, Sys.time() - strt)}")
+
     # nrow(ddff) != nrow(ddf) always. Odd number of iterations -> uneven folded chain
     # lengths -> posterior:::.split_chains drops some values.
 
@@ -391,25 +443,58 @@ fsummary = function(ddf,
     #   mtt(across(variables,
     #              \(x) qnorm((rank_fun(x) - 3/8) / (nrow(ddff) - 2 * 3/8 + 1))))
 
-    z_scaled = ddff |> # 3.7s
-      mtt(across(variables,
-                 \(x) qnorm((myrank(x) - 3/8) / (nrow(ddff) - 2 * 3/8 + 1))))
+    strt = Sys.time()
+
+    # z_scaled = ddff |> # 5s
+    #   mtt(across(variables,
+    #              z_scale,
+    #              n = nrow(ddff)))
+
+    z_scaled = mirai::mirai_map(list(ddff |> # .6s on 12c
+                                  slt(variables) |>
+                                  as.list(),
+                                rep(nrow(ddff),
+                                    times = length(variables))),
+                           z_scale)[] |>
+      qDT() |>
+      magrittr::set_colnames(variables) |>
+      add_vars(ddff |> slt(".chain", ".iteration", ".draw"))
+
+    if (verbose) cli::cli_alert("z_scale {round(digits = 2, Sys.time() - strt)}")
+
+    strt = Sys.time()
 
     ess_tail_df = data.table(variable = variables, # 15.4s
                              ess_tail = fess_tail(ddff, q_df, half_iter, two_chain, variables))
+
+    if (verbose) cli::cli_alert("fess_tail {round(digits = 2, Sys.time() - strt)}")
+
+    strt = Sys.time()
 
     demedian_abs = \(x, y=fold_meds) abs(TRA(x, STATS = y))
 
     settransformv(ddff, variables, demedian_abs, apply = FALSE)
 
-    z_scaled_folded = ddff |> # 4.6s
-      mtt(across(variables,
-                 \(x) qnorm((myrank(x) - 3/8) / (nrow(ddff) - 2 * 3/8 + 1))))
+    z_scaled_folded = mirai::mirai_map(list(ddff |> # .6s on 12c
+                                              slt(variables) |>
+                                              as.list(),
+                                            rep(nrow(ddff),
+                                                times = length(variables))),
+                                       z_scale)[] |>
+      qDT() |>
+      magrittr::set_colnames(variables) |>
+      add_vars(ddff |> slt(".chain", ".iteration", ".draw"))
 
+    if (verbose) cli::cli_alert("z_scale_fold {round(digits = 2, Sys.time() - strt)}")
+    strt = Sys.time()
     rh_df = frhat(z_scaled, z_scaled_folded, n_iter, n_chain, variables)
 
+    if (verbose) cli::cli_alert("rhat {round(digits = 2, Sys.time() - strt)}")
+    strt = Sys.time()
+
     ess_bulk_df = data.table(variable = variables, # 6.3s
-                             ess_bulk = fess(z_scaled, half_iter, two_chain, variables))
+                             ess_bulk = fess_bulk(z_scaled, half_iter, two_chain, variables))
+    if (verbose) cli::cli_alert("fess_bulk {round(digits = 2, Sys.time() - strt)}")
 
     res = join(res, rh_df,
                on = "variable",

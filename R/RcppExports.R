@@ -9,3 +9,7 @@ myrank <- function(v) {
     .Call(`_fsummary_myrank`, v)
 }
 
+center_split_df <- function(df, c_id, n_chain, n_iter) {
+    .Call(`_fsummary_center_split_df`, df, c_id, n_chain, n_iter)
+}
+

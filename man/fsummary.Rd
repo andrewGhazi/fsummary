@@ -4,7 +4,12 @@
 \alias{fsummary}
 \title{Fast summary function for cmdstanr draws}
 \usage{
-fsummary(ddf, conv_metrics = TRUE, .cores = getOption("mc.cores", 1))
+fsummary(
+  ddf,
+  conv_metrics = TRUE,
+  .cores = getOption("mc.cores", 1),
+  verbose = FALSE
+)
 }
 \arguments{
 \item{ddf}{a draws_df}
