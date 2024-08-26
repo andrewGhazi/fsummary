@@ -108,6 +108,7 @@ List center_split_df(DataFrame df, IntegerVector c_id, int n_chain, int n_iter) 
     for (int j=0; j<nc; j++) {
       NumericVector v = df[j];
       double param_mean = 0;
+
       for (int i=imin; i<imax; i++) {
         param_mean += v(i);
       }
