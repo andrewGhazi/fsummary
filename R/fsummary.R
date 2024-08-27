@@ -149,15 +149,18 @@ fess = function(ddff, n_iter, n_chain, variables) {
   }
 
   ch1_by_chain = fsummary:::get_ch1(split_chains)
+
+  if (length(variables) == 1) ch1_by_chain = lapply(ch1_by_chain, as.matrix)
   # ^ this gets re-used in the while loop(s) if additional covariance terms are needed
 
   chain_info = fsummary:::get_chain_info(ddff, n_cov, offset)
 
   acov_means = fsummary:::get_acov_means(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info)
 
+  # collapse::pivot() bugs out if it's only one variable
   mean_var_df = acov_means |>
     sbt(`.iteration` == 1) |>
-    pivot(ids = ".iteration") |>
+    data.table::melt.data.table(id.vars = ".iteration") |> # pivot(ids = ".iteration") |>
     mtt(mv = value * n_iter / (n_iter - 1),
         var_p = value) # it seems like posterior:::.ess has a redundant multiply
 
@@ -171,7 +174,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
                  fmean)) |>
       smr(across(variables,
                  fvar)) |>
-      pivot() |>
+      data.table::melt.data.table(measure.vars = variables) |>
       slt(cmv = "value")
 
     # Adding collapse:: namespaces here^ on across() totally fucks it up. This might
@@ -247,8 +250,8 @@ fess = function(ddff, n_iter, n_chain, variables) {
       offset = offset + offset_inc
     }
 
-    rhe[track] = 1 - (mean_var_df$mv[track] - tacov_mean_mat[track,t+1]) / mean_var_df$var_p[track]
-    rho[track] = 1 - (mean_var_df$mv[track] - tacov_mean_mat[track,t+2]) / mean_var_df$var_p[track]
+    rhe[track] = 1 - (mean_var_df$mv[track] - tacov_mean_mat[track,t+1,drop=FALSE]) / mean_var_df$var_p[track]
+    rho[track] = 1 - (mean_var_df$mv[track] - tacov_mean_mat[track,t+2,drop=FALSE]) / mean_var_df$var_p[track]
 
     epo[track] = rhe[track] + rho[track]
 
@@ -303,7 +306,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
   ess = n_chain * n_iter
   tau_bound = 1/log10(ess)
 
-  rh_m_t = rh_m[,seq_len(min(max_max+4, n_iter))] |> t()
+  rh_m_t = rh_m[,seq_len(min(max_max+4, n_iter)), drop = FALSE] |> t()
 
   tau_hat = rep(0, length(max_t))
 
@@ -317,21 +320,21 @@ fess = function(ddff, n_iter, n_chain, variables) {
   ess / tau_hat
 }
 
+get_quantile_df = function(ddff, q_df, variables, q) {
+  ddff |>
+    get_vars(variables) |>
+    qM() |>
+    TRA(get_elem(q_df, q), FUN = "-") |>
+    magrittr::is_weakly_less_than(0) |>
+    qDT() |>
+    add_vars(ddff |> get_vars(c(".chain", ".iteration", ".draw")))
+}
+
 fess_tail = function(ddff, q_df, half_iter, two_chain, variables) {
 
-  q5_I = ddff |>
-    get_vars(variables) |>
-    qM() |>
-    TRA(q_df$q5, FUN = "-") |>
-    magrittr::is_weakly_less_than(0) |>
-    cbind(ddff |> get_vars(c(".chain", ".iteration", ".draw")))
+  q5_I = get_quantile_df(ddff, q_df, variables, q = "q5")
 
-  q95_I = ddff |>
-    get_vars(variables) |>
-    qM() |>
-    TRA(q_df$q95, FUN = "-") |>
-    magrittr::is_weakly_less_than(0) |>
-    cbind(ddff |> get_vars(c(".chain", ".iteration", ".draw")))
+  q95_I = get_quantile_df(ddff, q_df, variables, q = "q95")
 
   ess_tail5  = fess( q5_I, half_iter, two_chain, variables)
   ess_tail95 = fess(q95_I, half_iter, two_chain, variables)
