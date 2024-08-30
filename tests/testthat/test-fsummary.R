@@ -1,4 +1,5 @@
 test_that("same answer as posterior::summarise_draws()", {
+  mirai::daemons(1)
   fsumm_res = fsummary(test_ddf)
   expect_equal(fsumm_res,
                test_res,
@@ -7,6 +8,8 @@ test_that("same answer as posterior::summarise_draws()", {
 })
 
 test_that("same answer on big result", {
+
+  mirai::daemons(1)
 
   n = 4000
   d = 1000
