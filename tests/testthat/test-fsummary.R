@@ -1,5 +1,5 @@
 test_that("same answer as posterior::summarise_draws()", {
-  mirai::daemons(1)
+
   fsumm_res = fsummary(test_ddf)
   expect_equal(fsumm_res,
                test_res,
