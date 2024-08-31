@@ -4,19 +4,12 @@
 \alias{fsummary}
 \title{Fast summary function for cmdstanr draws}
 \usage{
-fsummary(
-  ddf,
-  conv_metrics = TRUE,
-  .cores = getOption("mc.cores", 1),
-  verbose = FALSE
-)
+fsummary(ddf, conv_metrics = TRUE, verbose = FALSE)
 }
 \arguments{
 \item{ddf}{a draws_df}
 
 \item{conv_metrics}{logical indicating whether to compute convergence metrics (slower)}
-
-\item{.cores}{cores to use when computing mean/median}
 }
 \value{
 a data.table of summary metrics
