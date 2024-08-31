@@ -82,7 +82,7 @@ get_chain_info = function(ddff, n_cov, offset) {
 
 get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info) {
 
-  n_iter = nrow(split_chains)
+  n_iter = nrow(split_chains[[1]])
 
   minn = min(n_cov, n_iter)
   mino = min(offset, n_iter)
@@ -345,7 +345,7 @@ get_q_df = function(ddf, variables, chunks_list) {
   return(res)
 }
 
-get_quantile_df = function(ddff, q_df, variables, q) {
+get_quantile_ind_df = function(ddff, q_df, variables, q) {
   ddff |>
     get_vars(variables) |>
     qM() |>
@@ -355,26 +355,26 @@ get_quantile_df = function(ddff, q_df, variables, q) {
     add_vars(ddff |> get_vars(c(".chain", ".iteration", ".draw")))
 }
 
-fess_tail_par = function(ddff, q_df, half_iter, two_chain, variables) {
+fess_tail_par = function(ddff, q_df, half_iter, two_chain, variables, chunks_list) {
   chunks = get_chunks(variables)
 
-  input_list = list(lapply(chunks,
-                           \(x) ddff |> slt(x$v,  ".chain"   ,  ".iteration" ,".draw" )),
-                    lapply(chunks, \(x) sbt(q_df, x$vi)),
-                    lapply(chunks, \(x) x$v))
+  input_list = list(lapply(chunks_list[[2]], \(x) slt(ddff, c(x, ".chain", ".iteration", ".draw"))),
+                    lapply(chunks_list[[3]], \(x) sbt(q_df, x)),
+                    chunks_list[[2]])
 
   q5_list = mirai::mirai_map(input_list,
-                             get_quantile_df,
+                             get_quantile_ind_df,
                              .args = list(q = "q5"))[]
 
   q95_list = mirai::mirai_map(input_list,
-                              get_quantile_df,
+                              get_quantile_ind_df,
                               .args = list(q = "q95"))[]
 
   ess_tail5_list  = mirai::mirai_map(list(q5_list, input_list[[3]]),
                                      fess,
                                      .args = list(n_iter = half_iter,
                                                   n_chain = two_chain))[]
+
   ess_tail95_list  = mirai::mirai_map(list(q95_list, input_list[[3]]),
                                       fess,
                                       .args = list(n_iter = half_iter,
@@ -412,9 +412,9 @@ fess_tail_ser = function(ddff, q_df, half_iter, two_chain, variables) {
 
 }
 
-fess_tail = function(ddff, q_df, half_iter, two_chain, variables) {
-  if (multiple_daemons()) {
-    return(fess_tail_par(ddff, q_df, half_iter, two_chain, variables))
+fess_tail = function(ddff, q_df, half_iter, two_chain, variables, chunks_list) {
+  if (!is.null(chunks_list)) {
+    return(fess_tail_par(ddff, q_df, half_iter, two_chain, variables, chunks_list))
   } else {
     return(fess_tail_ser(ddff, q_df, half_iter, two_chain, variables))
   }
@@ -498,7 +498,7 @@ z_scale = function(x, n) {
 
 z_scale_df = function(ddff, variables) {
   if (multiple_daemons()) {
-    mirai::mirai_map(list(ddff |> # .6s on 12c
+    mirai::mirai_map(list(ddff |>
                             slt(variables) |>
                             as.list(),
                           rep(nrow(ddff),
@@ -513,6 +513,28 @@ z_scale_df = function(ddff, variables) {
                  z_scale,
                  n = nrow(ddff)))
   }
+}
+
+get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
+  ddff = ddf |>
+    qDT() |>
+    mtt(fold = `.iteration` > ceiling(n_iter/2)) |>
+    mtt(`.chain` = data.table::fifelse(fold,
+                                       `.chain` + n_chain,
+                                       `.chain`),
+        `.iteration` = data.table::fifelse(fold,
+                                           `.iteration` - ceiling(n_iter/2),
+                                           `.iteration`))
+
+  fold_meds = ddff |>
+    slt(variables) |>
+    fmedian()
+
+  ddff = ddff |>
+    sbt(`.iteration` <= half_iter) |>
+    get_vars(c(variables, ".chain", ".iteration", ".draw"))
+
+  return(list(ddff, fold_meds))
 }
 
 #' Fast summary function for cmdstanr draws
@@ -576,23 +598,9 @@ fsummary = function(ddf,
     strt = Sys.time()
 
     #draw data frame with fold
-    ddff = ddf |>
-      qDT() |>
-      mtt(fold = `.iteration` > ceiling(n_iter/2)) |>
-      mtt(`.chain` = data.table::fifelse(fold,
-                                         `.chain` + n_chain,
-                                         `.chain`),
-          `.iteration` = data.table::fifelse(fold,
-                                             `.iteration` - ceiling(n_iter/2),
-                                             `.iteration`))
-
-    fold_meds = ddff |>
-      slt(variables) |>
-      fmedian()
-
-    ddff = ddff |>
-      sbt(`.iteration` <= half_iter) |>
-      get_vars(c(variables, ".chain", ".iteration", ".draw"))
+    folded_with_meds = get_folded_with_meds(ddf, variables, n_iter, n_chain, half_iter)
+    ddff = folded_with_meds[[1]]
+    fold_meds = folded_with_meds[[2]]
 
     if (verbose) cli::cli_alert("ddff setup {round(digits = 2, Sys.time() - strt)}")
 
@@ -600,11 +608,6 @@ fsummary = function(ddf,
     # lengths -> posterior:::.split_chains drops some values.
 
     strt = Sys.time()
-
-    # z_scaled = ddff |> # 5s
-    #   mtt(across(variables,
-    #              z_scale,
-    #              n = nrow(ddff)))
 
     z_scaled = z_scale_df(ddff, variables)
 
@@ -615,7 +618,7 @@ fsummary = function(ddf,
     # ess_tail_df = data.table(variable = variables, # 15.4s
     #                          ess_tail = fess_tail(ddff, q_df, half_iter, two_chain, variables))
 
-    ess_tail_df = fess_tail(ddff, q_df, half_iter, two_chain, variables)
+    ess_tail_df = fess_tail(ddff, q_df, half_iter, two_chain, variables, chunks_list)
 
     if (verbose) cli::cli_alert("fess_tail {round(digits = 2, Sys.time() - strt)}")
 
