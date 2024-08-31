@@ -323,6 +323,28 @@ fess = function(ddff, n_iter, n_chain, variables) {
   ess / tau_hat
 }
 
+get_q_df = function(ddf, variables, chunks_list) {
+  if (is.null(chunks_list)) {
+    res = ddf |>
+      slt(variables) |>
+      dapply(fquantile, probs = c(.05, .95)) |>
+      data.table::transpose() |>
+      setNames(c("q5", "q95"))
+  } else {
+    m_res = mirai::mirai_map(chunks_list[1:2],
+                             fsummary:::get_q_df,
+                             .args = list(chunks_list = NULL))[]
+
+    res = m_res |>
+      rowbind() |>
+      mtt(i = chunks_list[[3]] |> unlist()) |>
+      roworder(i) |>
+      slt(-i)
+  }
+
+  return(res)
+}
+
 get_quantile_df = function(ddff, q_df, variables, q) {
   ddff |>
     get_vars(variables) |>
@@ -402,15 +424,7 @@ get_chunks = function(variables) {
 
   status_res = mirai::status()
 
-  if (status_res$connections == 0){
-    n_job = 1
-  } else if (is.character(status_res$daemons) | length(variables) < 5) {
-    n_job = 1
-  } else {
-    n_job = nrow(status_res$daemons)
-  }
-
-  n_job = n_job |> magrittr::multiply_by(2)
+  n_job = 2 * nrow(status_res$daemons)
 
   chunks = data.table::data.table(i = rep(seq_len(n_job),
                                           length.out = length(variables)),
@@ -453,6 +467,31 @@ fess_bulk = function(ddff, half_iter, two_chain, variables) {
   }
 }
 
+get_stats_df = function(ddf, variables, chunks_list) {
+  if (is.null(chunks_list)) {
+
+    no_dots = ddf |> get_vars(variables)
+
+    res = data.table(variable =        variables,
+                     mean     =   fmean(no_dots),
+                     median   = fmedian(no_dots),
+                     sd       =     fsd(no_dots),
+                     mad      = 1.4826 * fmedian(abs(TRA(no_dots, fmedian(no_dots)))))
+  } else {
+    m_res = mirai::mirai_map(chunks_list[1:2],
+                             fsummary:::get_stats_df,
+                             .args = list(chunks_list = NULL))[]
+
+    res = m_res |>
+      rowbind() |>
+      mtt(i = chunks_list[[3]] |> unlist()) |>
+      roworder(i) |>
+      slt(-i)
+  }
+
+  return(res)
+}
+
 z_scale = function(x, n) {
   qnorm((fsummary:::myrank(x)[,1] - 3/8) / (n - 2 * 3/8 + 1))
 }
@@ -480,18 +519,13 @@ z_scale_df = function(ddff, variables) {
 #'
 #' @param ddf a draws_df
 #' @param conv_metrics logical indicating whether to compute convergence metrics (slower)
-#' @param .cores cores to use when computing mean/median
 #' @details Currently .cores is only used by fmean and fmedian, so it likely won't help
 #' much unless you have loads of parameters and/or extremely long chains.
 #' @returns a data.table of summary metrics
 #' @export
 fsummary = function(ddf,
                     conv_metrics = TRUE,
-                    .cores = getOption("mc.cores", 1), verbose = FALSE) {
-
-  strt = Sys.time()
-  mirai::everywhere(library(collapse))
-  if (verbose) cli::cli_alert("collapse everywhere {round(digits = 2, Sys.time() - strt)}")
+                    verbose = FALSE) {
 
   strt = Sys.time()
 
@@ -507,18 +541,22 @@ fsummary = function(ddf,
   half_iter = floor(n_iter/2)
   two_chain = floor(n_chain*2)
 
-  no_dots = ddf |> get_vars(variables)
+  if (multiple_daemons()) {
+   mirai::everywhere(library(collapse))
+   chunks = get_chunks(variables)
 
-  q_df = no_dots |>
-    dapply(fquantile, probs = c(.05, .95)) |>
-    data.table::transpose() |>
-    setNames(c("q5", "q95"))
+   chunks_list = list(lapply(chunks,
+                             \(x) ddf |> slt(x$v,  ".chain"   ,  ".iteration" ,".draw" )),
+                      # lapply(chunks, \(x) sbt(q_df, x$vi)),
+                      lapply(chunks, \(x) x$v),
+                      lapply(chunks, \(x) x$vi))
+  } else {
+    chunks_list = NULL
+  }
 
-  res = data.table(variable =        variables,
-                   mean     =   fmean(no_dots, nthreads = .cores),
-                   median   = fmedian(no_dots, nthreads = .cores),
-                   sd       =     fsd(no_dots),
-                   mad      = 1.4826 * fmedian(abs(TRA(no_dots, fmedian(no_dots))))) |>
+  q_df = get_q_df(ddf, variables, chunks_list)
+
+  res = get_stats_df(ddf, variables, chunks_list) |>
     add_vars(q_df)
 
   if (verbose) cli::cli_alert("stats {round(digits = 2, Sys.time() - strt)}")
