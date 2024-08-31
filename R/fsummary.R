@@ -324,7 +324,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
 }
 
 get_q_df = function(ddf, variables, chunks_list) {
-  if (is.null(chunks_list)) {
+  if (is.null(chunks_list) | prod(dim(ddf)) < 2e8) {
     res = ddf |>
       slt(variables) |>
       dapply(fquantile, probs = c(.05, .95)) |>
@@ -468,7 +468,8 @@ fess_bulk = function(ddff, half_iter, two_chain, variables) {
 }
 
 get_stats_df = function(ddf, variables, chunks_list) {
-  if (is.null(chunks_list)) {
+  if (is.null(chunks_list) | prod(dim(ddf)) < 2e8) {
+    # basic stats are so fast that parallelization doesn't help until the input is huge
 
     no_dots = ddf |> get_vars(variables)
 
@@ -576,14 +577,22 @@ fsummary = function(ddf,
     chunks_list = NULL
   }
 
+  strt = Sys.time()
+
   q_df = get_q_df(ddf, variables, chunks_list)
 
-  res = get_stats_df(ddf, variables, chunks_list) |>
-    add_vars(q_df)
+  if (verbose) cli::cli_alert("quantiles  {round(digits = 2, Sys.time() - strt)}")
+
+  strt = Sys.time()
+
+  stats_df = get_stats_df(ddf, variables, chunks_list)
 
   if (verbose) cli::cli_alert("stats {round(digits = 2, Sys.time() - strt)}")
-  # The hard/slow part: rhat & ess ----
 
+  res = stats_df |>
+    add_vars(q_df)
+
+  # The hard/slow part: rhat & ess ----
   if (conv_metrics) {
     # rank_fun = ifelse(n_chain*n_iter > 3e4,
     #                   data.table::frank, # more overhead, but faster for very large vectors
