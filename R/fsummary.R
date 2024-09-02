@@ -571,10 +571,24 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
 #' Fast summary function for cmdstanr draws
 #'
+#' @description
+#' This function quickly computes the same thing as \link[posterior]{summarise_draws} with two minor differences:
+#' \itemize{
+#'   \item{it produces a \link[data.table]{data.table} instead of a \link[tibble]{tibble}}
+#'   \item{there can be negligible floating point error way out past the decimal point}
+#' }
+#'
 #' @param ddf a draws_df
 #' @param conv_metrics logical indicating whether to compute convergence metrics (slower)
-#' @details Currently .cores is only used by fmean and fmedian, so it likely won't help
-#' much unless you have loads of parameters and/or extremely long chains.
+#' @details
+#' \itemize{
+#' \item{The input \code{ddf} can ONLY be a \link[posterior]{draws_df}. No arrays, lists, etc. Use \link[posterior]{as_draws_df} if needed.}
+#' \item{Activate parallelization by calling \link[mirai]{daemons} with your desired
+#'   number of cores before calling \code{fsummary}.}
+#' }
+#' @examples
+#' fsummary(test_ddf)
+#'
 #' @returns a data.table of summary metrics
 #' @export
 fsummary = function(ddf,
