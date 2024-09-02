@@ -108,3 +108,11 @@ test_that("poorly mixed chains", {
                ignore_attr = TRUE)
 })
 
+test_that("zero variance case", {
+  fsumm_res = fsummary(na_ddf)
+  expect_equal(fsumm_res,
+               na_res,
+               ignore_attr = TRUE,
+               tolerance = 1e-6)
+})
+

@@ -19,8 +19,8 @@ test_ddf = rnorm(n_iter*n_chain*n_param) |>
 test_res = test_ddf |>
   posterior::summarise_draws()
 
-usethis::use_data(test_ddf, overwrite = TRUE, internal = TRUE)
-usethis::use_data(test_res, overwrite = TRUE, internal = TRUE)
+# usethis::use_data(test_ddf, overwrite = TRUE, internal = TRUE)
+# usethis::use_data(test_res, overwrite = TRUE, internal = TRUE)
 
 # Large example - don't include the (big) ddf in the package for this one:
 
@@ -80,15 +80,22 @@ model {
 }
 ")
 
+set.seed(123)
 m = cmdstan_model(tf)
 l = list(N = 5, x = rnorm(5), y = rnorm(5))
 na_ddf = m$sample(l, refresh = 0, show_messages = FALSE, show_exceptions = FALSE,
-                  iter_sampling = 200) |>
+                  iter_sampling = 200,
+                  seed = 123) |>
   posterior::as_draws_df()
 
 na_res = na_ddf |>
   posterior::summarise_draws()
 
-usethis::use_data(na_ddf, overwrite = TRUE, internal = TRUE)
-usethis::use_data(na_res, overwrite = TRUE, internal = TRUE)
+usethis::use_data(test_ddf,
+                  test_res,
+                  big_test_res,
+                  na_ddf,
+                  na_res,
+                  overwrite = TRUE, internal = TRUE)
+# usethis::use_data(na_res, overwrite = TRUE, internal = TRUE)
 
