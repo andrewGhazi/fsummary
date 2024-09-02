@@ -324,23 +324,12 @@ fess = function(ddff, n_iter, n_chain, variables) {
 }
 
 get_q_df = function(ddf, variables, chunks_list) {
-  if (is.null(chunks_list) | prod(dim(ddf)) < 2e8) {
-    res = ddf |>
-      slt(variables) |>
-      dapply(fquantile, probs = c(.05, .95)) |>
-      data.table::transpose() |>
-      setNames(c("q5", "q95"))
-  } else {
-    m_res = mirai::mirai_map(chunks_list[1:2],
-                             fsummary:::get_q_df,
-                             .args = list(chunks_list = NULL))[]
 
-    res = m_res |>
-      rowbind() |>
-      mtt(i = chunks_list[[3]] |> unlist()) |>
-      roworder(i) |>
-      slt(-i)
-  }
+  res = ddf |>
+    slt(variables) |>
+    dapply(fquantile, probs = c(.05, .95)) |>
+    data.table::transpose() |>
+    setNames(c("q5", "q95"))
 
   return(res)
 }
@@ -355,41 +344,7 @@ get_quantile_ind_df = function(ddff, q_df, variables, q) {
     add_vars(ddff |> get_vars(c(".chain", ".iteration", ".draw")))
 }
 
-fess_tail_par = function(ddff, q_df, half_iter, two_chain, variables, chunks_list) {
-  chunks = get_chunks(variables)
-
-  input_list = list(lapply(chunks_list[[2]], \(x) slt(ddff, c(x, ".chain", ".iteration", ".draw"))),
-                    lapply(chunks_list[[3]], \(x) sbt(q_df, x)),
-                    chunks_list[[2]])
-
-  q5_list = mirai::mirai_map(input_list,
-                             get_quantile_ind_df,
-                             .args = list(q = "q5"))[]
-
-  q95_list = mirai::mirai_map(input_list,
-                              get_quantile_ind_df,
-                              .args = list(q = "q95"))[]
-
-  ess_tail5_list  = mirai::mirai_map(list(q5_list, input_list[[3]]),
-                                     fess,
-                                     .args = list(n_iter = half_iter,
-                                                  n_chain = two_chain))[]
-
-  ess_tail95_list  = mirai::mirai_map(list(q95_list, input_list[[3]]),
-                                      fess,
-                                      .args = list(n_iter = half_iter,
-                                                   n_chain = two_chain))[]
-
-  chunks |>
-    rowbind() |>
-    mtt(q5 = ess_tail5_list |> unlist(),
-        q95 = ess_tail95_list |> unlist()) |>
-    mtt(ess_tail = pmin(q5, q95)) |>
-    roworder(vi) |>
-    slt(variable = v, ess_tail)
-}
-
-fess_tail_ser = function(ddff, q_df, half_iter, two_chain, variables) {
+fess_tail = function(ddff, q_df, half_iter, two_chain, variables) {
   q5_I = ddff |>
     get_vars(variables) |>
     qM() |>
@@ -409,15 +364,6 @@ fess_tail_ser = function(ddff, q_df, half_iter, two_chain, variables) {
 
   data.table(variable = variables,
              ess_tail = pmin(ess_tail5, ess_tail95))
-
-}
-
-fess_tail = function(ddff, q_df, half_iter, two_chain, variables, chunks_list) {
-  if (!is.null(chunks_list)) {
-    return(fess_tail_par(ddff, q_df, half_iter, two_chain, variables, chunks_list))
-  } else {
-    return(fess_tail_ser(ddff, q_df, half_iter, two_chain, variables))
-  }
 }
 
 get_chunks = function(variables) {
@@ -434,61 +380,19 @@ get_chunks = function(variables) {
     split(by = "i")
 }
 
-fess_bulk_par = function(ddff, half_iter, two_chain, variables) {
-  chunks = get_chunks(variables)
-
-  input_list = list(lapply(chunks,
-                           \(x) ddff |> slt(x$v,  ".chain"   ,  ".iteration" ,".draw" )),
-                    lapply(chunks, \(x) x$v))
-
-  mirai_output = mirai::mirai_map(input_list,
-                                  fess,
-                                  .args = list(n_iter = half_iter,
-                                               n_chain = two_chain))[]
-
-  chunks |>
-    rowbind() |>
-    mtt(ess_bulk = mirai_output |> unlist()) |>
-    roworder(vi) |>
-    slt(variable = v, ess_bulk = ess_bulk)
-}
-
-fess_bulk_ser = function(ddff, half_iter, two_chain, variables) {
-  fess(ddff, half_iter, two_chain, variables)
-}
-
 fess_bulk = function(ddff, half_iter, two_chain, variables) {
-  if (multiple_daemons()) {
-    return(fess_bulk_par(ddff, half_iter, two_chain, variables))
-  } else {
-    res = data.table(variable = variables,
-                     ess_bulk = fess_bulk_ser(ddff, half_iter, two_chain, variables))
-    return(res)
-  }
+  data.table(variable = variables,
+             ess_bulk = fess(ddff, half_iter, two_chain, variables))
 }
 
-get_stats_df = function(ddf, variables, chunks_list) {
-  if (is.null(chunks_list) | prod(dim(ddf)) < 2e8) {
-    # basic stats are so fast that parallelization doesn't help until the input is huge
+get_stats_df = function(ddf, variables) {
+  no_dots = ddf |> get_vars(variables)
 
-    no_dots = ddf |> get_vars(variables)
-
-    res = data.table(variable =        variables,
-                     mean     =   fmean(no_dots),
-                     median   = fmedian(no_dots),
-                     sd       =     fsd(no_dots),
-                     mad      = 1.4826 * fmedian(abs(TRA(no_dots, fmedian(no_dots)))))
-  } else {
-    m_res = mirai::mirai_map(chunks_list[1:2],
-                             fsummary:::get_stats_df,
-                             .args = list(chunks_list = NULL))[]
-
-    res = m_res |>
-      rowbind() |>
-      mtt(i = chunks_list[[3]] |> unlist()) |>
-      roworder(i) |>
-      slt(-i)
-  }
+  res = data.table(variable =        variables,
+                   mean     =   fmean(no_dots),
+                   median   = fmedian(no_dots),
+                   sd       =     fsd(no_dots),
+                   mad      = 1.4826 * fmedian(abs(TRA(no_dots, fmedian(no_dots)))))
 
   return(res)
 }
@@ -498,22 +402,10 @@ z_scale = function(x, n) {
 }
 
 z_scale_df = function(ddff, variables) {
-  if (multiple_daemons()) {
-    mirai::mirai_map(list(ddff |>
-                            slt(variables) |>
-                            as.list(),
-                          rep(nrow(ddff),
-                              times = length(variables))),
-                     z_scale)[] |>
-      qDT() |>
-      magrittr::set_colnames(variables) |>
-      add_vars(ddff |> slt(".chain", ".iteration", ".draw"))
-  } else {
-    ddff |> # 3.7s
-      mtt(across(variables,
-                 z_scale,
-                 n = nrow(ddff)))
-  }
+  ddff |> # 3.7s
+    mtt(across(variables,
+               z_scale,
+               n = nrow(ddff)))
 }
 
 get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
@@ -538,6 +430,143 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
   return(list(ddff, fold_meds))
 }
 
+.fsummary = function(ddf,
+                     conv_metrics = TRUE,
+                     verbose = TRUE,
+                     chunks_list = NULL) {
+
+  # if chunks are provided, recursively call this function on each chunk
+  if (!is.null(chunks_list)) {
+    # Man I hate this 2D mapping behavior of mirai_map
+
+    # m_res = mirai::mirai_map(chunks_list,
+    #                          .fsummary,
+    #                          .args = list(chunks_list = NULL))[]
+
+    .args = list(chunks_list = NULL,
+                 conv_metrics = conv_metrics,
+                 verbose = verbose)
+
+    m_res <- vector(mode = "list", length = length(chunks_list))
+    names(m_res) = names(chunks_list)
+
+    for (i in seq_along(m_res)) {
+      m_res[[i]] = mirai::mirai({.f(chunk_i,
+                                    conv_metrics = cm,
+                                    verbose = v,
+                                    chunks_list = NULL)},
+                                .args = list(.f = .fsummary,
+                                             cm = conv_metrics,
+                                             v = verbose,
+                                             chunk_i = chunks_list[[i]]),
+                                .compute = "default")
+    }
+
+    class(m_res) = "mirai_map"
+
+    res = rowbind(m_res[])
+  } else {
+
+    strt = Sys.time()
+
+    if (!inherits(ddf, "draws_df")) cli::cli_abort("Input {.var ddf} must be a {.cls draws_df}")
+
+    variables = names(ddf) |> head(-3)
+    ddf = ddf |> qDT()
+
+    n_iter = max(ddf$`.iteration`)
+    n_chain = max(ddf$`.chain`)
+
+    half_iter = floor(n_iter/2)
+    two_chain = floor(n_chain*2)
+
+    strt = Sys.time()
+
+    q_df = fsummary:::get_q_df(ddf, variables)
+
+    if (verbose) cli::cli_alert("quantiles  {round(digits = 2, Sys.time() - strt)}")
+
+    strt = Sys.time()
+
+    stats_df = fsummary:::get_stats_df(ddf, variables)
+
+    if (verbose) cli::cli_alert("stats {round(digits = 2, Sys.time() - strt)}")
+
+    res = stats_df |>
+      add_vars(q_df)
+
+    # The hard/slow part: rhat & ess ----
+    if (conv_metrics) {
+      # almost all time spent on the INT. A faster rank function would help a lot.
+      # mnorm::qnormFast is a tiny bit better (~10% faster for the full thing) but adds a
+      # dependency and some approximation error. Combining both ranking and qnorm in
+      # a Cpp function would probably be substantially better. Especially if it took the
+      # variables in grouped long format (would require a pivot). Above my pay grade.
+
+      strt = Sys.time()
+
+      #draw data frame with fold
+      folded_with_meds = fsummary:::get_folded_with_meds(ddf, variables, n_iter, n_chain, half_iter)
+      ddff = folded_with_meds[[1]]
+      fold_meds = folded_with_meds[[2]]
+
+      if (verbose) cli::cli_alert("ddff setup {round(digits = 2, Sys.time() - strt)}")
+
+      # nrow(ddff) != nrow(ddf) always. Odd number of iterations -> uneven folded chain
+      # lengths -> posterior:::.split_chains drops some values.
+
+      strt = Sys.time()
+
+      z_scaled = fsummary:::z_scale_df(ddff, variables)
+
+      if (verbose) cli::cli_alert("z_scale {round(digits = 2, Sys.time() - strt)}")
+
+      strt = Sys.time()
+
+      ess_tail_df = fsummary:::fess_tail(ddff, q_df, half_iter, two_chain, variables)
+
+      if (verbose) cli::cli_alert("fess_tail {round(digits = 2, Sys.time() - strt)}")
+
+      strt = Sys.time()
+
+      demedian_abs = \(x, y=fold_meds) abs(TRA(x, STATS = y))
+
+      settransformv(ddff, variables, demedian_abs, apply = FALSE)
+
+      z_scaled_folded = fsummary:::z_scale_df(ddff, variables)
+
+      if (verbose) cli::cli_alert("z_scale_fold {round(digits = 2, Sys.time() - strt)}")
+
+      strt = Sys.time()
+
+      rh_df = fsummary:::frhat(z_scaled, z_scaled_folded, n_iter, n_chain, variables)
+
+      if (verbose) cli::cli_alert("rhat {round(digits = 2, Sys.time() - strt)}")
+
+      strt = Sys.time()
+
+      ess_bulk_df = fsummary:::fess_bulk(z_scaled, half_iter, two_chain, variables)
+
+      if (verbose) cli::cli_alert("fess_bulk {round(digits = 2, Sys.time() - strt)}")
+
+      res = join(res, rh_df,
+                 on = "variable",
+                 validate = "1:1", verbose = FALSE) |>
+        join(ess_bulk_df,
+             on = "variable",
+             validate = "1:1",
+             verbose = FALSE) |>
+        join(ess_tail_df,
+             on = "variable",
+             validate = "1:1",
+             verbose = FALSE)
+    }
+
+  }
+
+  res[]
+}
+
 #' Fast summary function for cmdstanr draws
 #'
 #' @param ddf a draws_df
@@ -550,122 +579,29 @@ fsummary = function(ddf,
                     conv_metrics = TRUE,
                     verbose = FALSE) {
 
-  strt = Sys.time()
-
-  if (!inherits(ddf, "draws_df")) cli::cli_abort("Input {.var ddf} must be a {.cls draws_df}")
-
-  ddf = ddf |> qDT()
-
-  variables = names(ddf) |>
-    grep(pattern = "\\.chain|\\.iteration|\\.draw", value = TRUE, invert = TRUE)
-
-  n_iter = max(ddf$`.iteration`)
-  n_chain = max(ddf$`.chain`)
-  half_iter = floor(n_iter/2)
-  two_chain = floor(n_chain*2)
+  variables = names(ddf) |> head(-3)
 
   if (multiple_daemons()) {
-   mirai::everywhere(library(collapse))
-   chunks = get_chunks(variables)
 
-   chunks_list = list(lapply(chunks,
-                             \(x) ddf |> slt(x$v,  ".chain"   ,  ".iteration" ,".draw" )),
-                      # lapply(chunks, \(x) sbt(q_df, x$vi)),
-                      lapply(chunks, \(x) x$v),
-                      lapply(chunks, \(x) x$vi))
+    if (verbose) cli::cli_alert_info("Loading `collapse` on daemons with {.code mirai::everywhere(library(collapse)) }")
+
+    mirai::everywhere(library(collapse))
+
+    chunks = get_chunks(variables)
+
+    chunks_list = lapply(chunks, \(x) slt(ddf, c(x$v, ".chain", ".iteration", ".draw")));
+
+    res = .fsummary(ddf = NULL,
+                    conv_metrics = conv_metrics, verbose = verbose,
+                    chunks_list = chunks_list) |>
+      add_vars(rowbind(chunks)) |>
+      roworder(vi) |>
+      slt(-i, -v, -vi)
   } else {
-    chunks_list = NULL
+    res = .fsummary(ddf,
+                    conv_metrics = conv_metrics, verbose = verbose)
   }
 
-  strt = Sys.time()
-
-  q_df = get_q_df(ddf, variables, chunks_list)
-
-  if (verbose) cli::cli_alert("quantiles  {round(digits = 2, Sys.time() - strt)}")
-
-  strt = Sys.time()
-
-  stats_df = get_stats_df(ddf, variables, chunks_list)
-
-  if (verbose) cli::cli_alert("stats {round(digits = 2, Sys.time() - strt)}")
-
-  res = stats_df |>
-    add_vars(q_df)
-
-  # The hard/slow part: rhat & ess ----
-  if (conv_metrics) {
-    # rank_fun = ifelse(n_chain*n_iter > 3e4,
-    #                   data.table::frank, # more overhead, but faster for very large vectors
-    #                   base::rank)
-
-    # almost all time spent on the INT. A faster rank function would help a lot.
-    # mnorm::qnormFast is a tiny bit better (~10% faster for the full thing) but adds a
-    # dependency and some approximation error. Combining both ranking and qnorm in
-    # a Cpp function would probably be substantially better. Especially if it took the
-    # variables in grouped long format (would require a pivot). Above my pay grade.
-
-    strt = Sys.time()
-
-    #draw data frame with fold
-    folded_with_meds = get_folded_with_meds(ddf, variables, n_iter, n_chain, half_iter)
-    ddff = folded_with_meds[[1]]
-    fold_meds = folded_with_meds[[2]]
-
-    if (verbose) cli::cli_alert("ddff setup {round(digits = 2, Sys.time() - strt)}")
-
-    # nrow(ddff) != nrow(ddf) always. Odd number of iterations -> uneven folded chain
-    # lengths -> posterior:::.split_chains drops some values.
-
-    strt = Sys.time()
-
-    z_scaled = z_scale_df(ddff, variables)
-
-    if (verbose) cli::cli_alert("z_scale {round(digits = 2, Sys.time() - strt)}")
-
-    strt = Sys.time()
-
-    # ess_tail_df = data.table(variable = variables, # 15.4s
-    #                          ess_tail = fess_tail(ddff, q_df, half_iter, two_chain, variables))
-
-    ess_tail_df = fess_tail(ddff, q_df, half_iter, two_chain, variables, chunks_list)
-
-    if (verbose) cli::cli_alert("fess_tail {round(digits = 2, Sys.time() - strt)}")
-
-    strt = Sys.time()
-
-    demedian_abs = \(x, y=fold_meds) abs(TRA(x, STATS = y))
-
-    settransformv(ddff, variables, demedian_abs, apply = FALSE)
-
-    z_scaled_folded = z_scale_df(ddff, variables)
-
-    if (verbose) cli::cli_alert("z_scale_fold {round(digits = 2, Sys.time() - strt)}")
-
-    strt = Sys.time()
-
-    rh_df = frhat(z_scaled, z_scaled_folded, n_iter, n_chain, variables)
-
-    if (verbose) cli::cli_alert("rhat {round(digits = 2, Sys.time() - strt)}")
-
-    strt = Sys.time()
-
-    ess_bulk_df = fess_bulk(z_scaled, half_iter, two_chain, variables)
-
-    if (verbose) cli::cli_alert("fess_bulk {round(digits = 2, Sys.time() - strt)}")
-
-    res = join(res, rh_df,
-               on = "variable",
-               validate = "1:1", verbose = FALSE) |>
-      join(ess_bulk_df,
-           on = "variable",
-           validate = "1:1",
-           verbose = FALSE) |>
-      join(ess_tail_df,
-           on = "variable",
-           validate = "1:1",
-           verbose = FALSE)
-  }
-
-  res[]
+  res
 }
 
