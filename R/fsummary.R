@@ -401,7 +401,7 @@ z_scale = function(x, n) {
 z_scale_df = function(ddff, variables) {
   ddff |> # 3.7s
     mtt(across(variables,
-               z_scale,
+               fsummary:::z_scale,
                n = nrow(ddff)))
 }
 
