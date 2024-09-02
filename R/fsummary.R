@@ -87,31 +87,15 @@ get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, 
   minn = min(n_cov, n_iter)
   mino = min(offset, n_iter)
 
-  # acov = mirai::mirai_map(list(split_chains, ch1_by_chain),
-  #                         .cov_head,
-  #                         .args = list(n_cov = minn, offset = mino))[]
-
   acov = mapply(.cov_head,
                 split_chains,
                 ch1_by_chain,
                 MoreArgs = list(n_cov = minn, offset = mino),
                 SIMPLIFY = FALSE)
 
-  # names(acov) = as.character(unique(chain_info$.chain))
-
-  # a1 = collapse::rowbind(acov, use.names = FALSE)
-  # a2 = magrittr::set_colnames(a1, variables)
-  # a3 = collapse::add_vars(a2, chain_info)
-  # a3[,lapply(.SD, mean), by = ".iteration", .SDcols = variables]
-  # data.table::`[.data.table`(a3,,lapply(data.table::.SD, data.table:::gmean),
-  #                            by = ".iteration", .SDcols = variables)
-  # # a4 = collapse::gby(a3, ".iteration")
-  # # a5 = collapse::smr(a4, collapse::fmean, .cols = variables)
-  # # collapse::qDT(a5)
-
   acov |>
     rowbind(use.names = FALSE) |>
-    magrittr::set_colnames(variables) |>
+    setColnames(variables) |>
     add_vars(chain_info |> slt(".iteration")) |>
     gby(".iteration") |>
     fmean(use.g.names = FALSE)
@@ -336,12 +320,16 @@ get_q_df = function(ddf, variables, chunks_list) {
   return(res)
 }
 
+ltet = function(x,y) {
+  x <= y
+}
+
 get_quantile_ind_df = function(ddff, q_df, variables, q) {
   ddff |>
     get_vars(variables) |>
     qM() |>
     TRA(get_elem(q_df, q), FUN = "-") |>
-    magrittr::is_weakly_less_than(0) |>
+    fsummary:::ltet(0) |>
     qDT() |>
     add_vars(ddff |> get_vars(c(".chain", ".iteration", ".draw")))
 }
@@ -351,14 +339,14 @@ fess_tail = function(ddff, q_df, half_iter, two_chain, variables) {
     get_vars(variables) |>
     qM() |>
     TRA(q_df$q5, FUN = "-") |>
-    magrittr::is_weakly_less_than(0) |>
+    fsummary:::ltet(0) |>
     cbind(ddff |> get_vars(c(".chain", ".iteration", ".draw")))
 
   q95_I = ddff |>
     get_vars(variables) |>
     qM() |>
     TRA(q_df$q95, FUN = "-") |>
-    magrittr::is_weakly_less_than(0) |>
+    fsummary:::ltet(0) |>
     cbind(ddff |> get_vars(c(".chain", ".iteration", ".draw")))
 
   ess_tail5  = fess( q5_I, half_iter, two_chain, variables)
