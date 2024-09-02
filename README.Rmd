@@ -53,7 +53,7 @@ ddf = rnorm(n_chain * n_iter * n_var) |>
       `.chain` = rep(1:n_chain, each = n_iter)) |> 
   posterior::as_draws_df()
 
-fsummary(ddf) 
+fsummary(ddf) |> head()
 ```
 
 On one core, it's about 3 times faster than `summarise_draws()` when computing convergence metrics and 5-6 times faster without. A couple quick tests on my machine:
