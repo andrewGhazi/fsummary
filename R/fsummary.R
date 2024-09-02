@@ -2,6 +2,13 @@ multiple_daemons = function() {
   is.matrix(mirai::status()$daemons) && nrow(mirai::status()$daemons) > 1
 }
 
+add_zv_vars = function(sdf, zv_vars) {
+  matrix(NA_real_, nrow = length(zv_vars), ncol = ncol(sdf) - 1) |>
+    qDT() |>
+    setColnames(names(sdf)[-1]) |>
+    add_vars(variable = zv_vars, pos = "front")
+}
+
 frhat_grp_df = function(gdf, n_iter, variables) {
 
   grp_df = gdf |> gby(`.chain`)
@@ -485,6 +492,14 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
     res = stats_df |>
       add_vars(q_df)
 
+    if (any(res$sd == 0)) {
+      og_vars = variables
+      zv_vars = res |> sbt(sd == 0) |> get_elem("variable")
+
+      variables = variables[!(variables %in% zv_vars)]
+      fselect(ddf, zv_vars) <- NULL
+    }
+
     # The hard/slow part: rhat & ess ----
     if (conv_metrics) {
       # almost all time spent on the INT. A faster rank function would help a lot.
@@ -513,7 +528,12 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
       strt = Sys.time()
 
+      q_df = res |> sbt(variable %in% variables) |> slt(q5, q95)
+      # ^ re-assign q_df here because it's already joined to res and we need to remove any zero-variance variables that were dropped
+
       ess_tail_df = fsummary:::fess_tail(ddff, q_df, half_iter, two_chain, variables)
+
+      if (exists("zv_vars")) ess_tail_df = rowbind(ess_tail_df, add_zv_vars(ess_tail_df, zv_vars))
 
       if (verbose) cli::cli_alert("fess_tail {round(digits = 2, Sys.time() - strt)}")
 
@@ -531,11 +551,15 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
       rh_df = fsummary:::frhat(z_scaled, z_scaled_folded, n_iter, n_chain, variables)
 
+      if (exists("zv_vars")) rh_df = rowbind(rh_df, add_zv_vars(rh_df, zv_vars))
+
       if (verbose) cli::cli_alert("rhat {round(digits = 2, Sys.time() - strt)}")
 
       strt = Sys.time()
 
       ess_bulk_df = fsummary:::fess_bulk(z_scaled, half_iter, two_chain, variables)
+
+      if (exists("zv_vars")) ess_bulk_df = rowbind(ess_bulk_df, add_zv_vars(ess_bulk_df, zv_vars))
 
       if (verbose) cli::cli_alert("fess_bulk {round(digits = 2, Sys.time() - strt)}")
 
