@@ -59,14 +59,18 @@ arma::vec myrank(arma::vec v) {
   arma::vec res = conv_to< arma::vec >::from(sort_index(o) + 1);
   arma::vec sv = v(o);
 
+  int uniq_obs = 1;
+
   for (int i=1; i<n; i++) {
     // scan through the sorted vector
-    int uniq_obs = 1;
     int need_div = 0;
 
     if (sv(i) == sv(i-1)) {
       uniq_obs += 1;
-      need_div = 1;
+
+      if (sv(i) != sv(i+1) && i<(n-1)) {
+        need_div = 1;
+      }
     }
 
     if (need_div) {
@@ -82,6 +86,7 @@ arma::vec myrank(arma::vec v) {
       for (int j=0; j<uniq_obs; j++) {
         res(o(i-j)) = mv;
       }
+
       uniq_obs = 1;
       need_div = 0;
     }
