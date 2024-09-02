@@ -68,7 +68,7 @@ arma::vec myrank(arma::vec v) {
     if (sv(i) == sv(i-1)) {
       uniq_obs += 1;
 
-      if (sv(i) != sv(i+1) && i<(n-1)) {
+      if ( i<(n-1) && sv(i) != sv(i+1)) {
         need_div = 1;
       }
     }
