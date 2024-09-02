@@ -83,7 +83,8 @@ model {
 set.seed(123)
 m = cmdstan_model(tf)
 l = list(N = 5, x = rnorm(5), y = rnorm(5))
-na_ddf = m$sample(l, refresh = 0, show_messages = FALSE, show_exceptions = FALSE,
+na_ddf = m$sample(l, refresh = 0,
+                  show_messages = FALSE, show_exceptions = FALSE,
                   iter_sampling = 200,
                   seed = 123) |>
   posterior::as_draws_df()
