@@ -97,6 +97,20 @@ bench::mark(fsummary = {fsummary(ddf,
 
 ![](man/figures/comparison.png)
 
+You can set up daemons with
+[`mirai`](https://shikokuchuo.net/mirai/index.html) for parallelization:
+
+``` r
+mirai::daemons(4)
+system.time({fsummary(ddf)})
+```
+
+       user  system elapsed 
+      0.018   0.012   1.227 
+
+(This helps more once you have summaries that take longer than a
+second!)
+
 # TODO
 
 - ✔ ~~parallelization with `mirai`~~
