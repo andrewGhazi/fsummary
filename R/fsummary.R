@@ -235,6 +235,8 @@ fess = function(ddff, n_iter, n_chain, variables) {
 
       addl_chain_info = fsummary:::get_chain_info(ddff, offset_inc, offset)
 
+      if (offset + offset_inc > n_iter) offset_inc = n_iter - offset
+
       addl_acov_means = fsummary:::get_acov_means(split_chains |> lapply(\(x) x[,variables[track],drop=FALSE]),
                                                   ch1_by_chain |> lapply(\(x) x[track]),
                                                   variables[track],
@@ -583,7 +585,7 @@ fsummary = function(ddf,
 
   if (multiple_daemons()) {
 
-    if (verbose) cli::cli_alert_info("Loading `collapse` on daemons with {.code mirai::everywhere(library(collapse)) }")
+    if (verbose) cli::cli_alert_info("Loading `collapse` on daemons with {.code mirai::everywhere(library(collapse))}")
 
     mirai::everywhere(library(collapse))
 
