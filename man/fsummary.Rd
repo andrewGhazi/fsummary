@@ -4,22 +4,31 @@
 \alias{fsummary}
 \title{Fast summary function for cmdstanr draws}
 \usage{
-fsummary(ddf, conv_metrics = TRUE, .cores = getOption("mc.cores", 1))
+fsummary(ddf, conv_metrics = TRUE, verbose = FALSE)
 }
 \arguments{
 \item{ddf}{a draws_df}
 
 \item{conv_metrics}{logical indicating whether to compute convergence metrics (slower)}
-
-\item{.cores}{cores to use when computing mean/median}
 }
 \value{
 a data.table of summary metrics
 }
 \description{
-Fast summary function for cmdstanr draws
+This function quickly computes the same thing as \link[posterior]{summarise_draws} with two minor differences:
+\itemize{
+  \item{it produces a \link[data.table]{data.table} instead of a \link[tibble]{tibble}}
+  \item{there can be negligible floating point error way out past the decimal point}
+}
 }
 \details{
-Currently .cores is only used by fmean and fmedian, so it likely won't help
-much unless you have loads of parameters and/or extremely long chains.
+\itemize{
+\item{The input \code{ddf} can ONLY be a \link[posterior]{draws_df}. No arrays, lists, etc. Use \link[posterior]{as_draws_df} if needed.}
+\item{Activate parallelization by calling \link[mirai]{daemons} with your desired
+  number of cores before calling \code{fsummary}.}
+}
+}
+\examples{
+fsummary(test_ddf)
+
 }

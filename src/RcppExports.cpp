@@ -11,18 +11,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// fftm
-arma::mat fftm(arma::mat x, int k);
-RcppExport SEXP _fsummary_fftm(SEXP xSEXP, SEXP kSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type k(kSEXP);
-    rcpp_result_gen = Rcpp::wrap(fftm(x, k));
-    return rcpp_result_gen;
-END_RCPP
-}
 // cov_head
 arma::mat cov_head(arma::mat x, int n, int offset);
 RcppExport SEXP _fsummary_cov_head(SEXP xSEXP, SEXP nSEXP, SEXP offsetSEXP) {
@@ -47,11 +35,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// center_split_df
+List center_split_df(DataFrame df, IntegerVector c_id, int n_chain, int n_iter);
+RcppExport SEXP _fsummary_center_split_df(SEXP dfSEXP, SEXP c_idSEXP, SEXP n_chainSEXP, SEXP n_iterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< DataFrame >::type df(dfSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type c_id(c_idSEXP);
+    Rcpp::traits::input_parameter< int >::type n_chain(n_chainSEXP);
+    Rcpp::traits::input_parameter< int >::type n_iter(n_iterSEXP);
+    rcpp_result_gen = Rcpp::wrap(center_split_df(df, c_id, n_chain, n_iter));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_fsummary_fftm", (DL_FUNC) &_fsummary_fftm, 2},
     {"_fsummary_cov_head", (DL_FUNC) &_fsummary_cov_head, 3},
     {"_fsummary_myrank", (DL_FUNC) &_fsummary_myrank, 1},
+    {"_fsummary_center_split_df", (DL_FUNC) &_fsummary_center_split_df, 4},
     {NULL, NULL, 0}
 };
 

@@ -13,8 +13,8 @@ Imports:
     cli,
     collapse,
     data.table,
-    magrittr,
     matrixStats,
+    mirai,
     Rcpp,
     rlang,
     stats
@@ -26,4 +26,4 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Depends: 
-    R (>= 2.10)
+    R (>= 3.4.0)

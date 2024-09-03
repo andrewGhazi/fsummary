@@ -19,8 +19,8 @@ test_ddf = rnorm(n_iter*n_chain*n_param) |>
 test_res = test_ddf |>
   posterior::summarise_draws()
 
-usethis::use_data(test_ddf, overwrite = TRUE)
-usethis::use_data(test_res, overwrite = TRUE)
+# usethis::use_data(test_ddf, overwrite = TRUE, internal = TRUE)
+# usethis::use_data(test_res, overwrite = TRUE, internal = TRUE)
 
 # Large example - don't include the (big) ddf in the package for this one:
 
@@ -44,4 +44,59 @@ big_ddf = datM |>
 big_test_res = big_ddf |>
   posterior::summarise_draws()
 
-usethis::use_data(big_test_res, overwrite = TRUE)
+usethis::use_data(big_test_res, overwrite = TRUE, internal = TRUE)
+
+#### Generate example with NAs / 0 variance ----
+
+library(cmdstanr)
+tf = write_stan_file("
+data {
+  int<lower=1> N;
+  array[N] real x;
+  vector[N] y;
+}
+transformed data {
+  vector[N] mu = rep_vector(0, N);
+}
+parameters {
+  real<lower=0> rho;
+  real<lower=0> alpha;
+  real<lower=0> sigma;
+}
+transformed parameters {
+  matrix[N, N] L_K;
+
+  matrix[N, N] K = add_diag(gp_exp_quad_cov(x, alpha, rho), sigma^2);
+
+  L_K = cholesky_decompose(K);
+}
+model {
+
+  rho ~ inv_gamma(5, 5);
+  alpha ~ std_normal();
+  sigma ~ std_normal();
+
+  y ~ multi_normal_cholesky(mu, L_K);
+}
+")
+
+set.seed(123)
+m = cmdstan_model(tf)
+l = list(N = 5, x = rnorm(5), y = rnorm(5))
+na_ddf = m$sample(l, refresh = 0,
+                  show_messages = FALSE, show_exceptions = FALSE,
+                  iter_sampling = 200,
+                  seed = 123) |>
+  posterior::as_draws_df()
+
+na_res = na_ddf |>
+  posterior::summarise_draws()
+
+usethis::use_data(test_ddf,
+                  test_res,
+                  big_test_res,
+                  na_ddf,
+                  na_res,
+                  overwrite = TRUE, internal = TRUE)
+# usethis::use_data(na_res, overwrite = TRUE, internal = TRUE)
+
