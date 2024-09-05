@@ -10,12 +10,17 @@ fsummary(ddf, conv_metrics = TRUE, verbose = FALSE)
 \item{ddf}{a draws_df}
 
 \item{conv_metrics}{logical indicating whether to compute convergence metrics (slower)}
+
+\item{verbose}{logical indicating whether to print helpful messages}
+
+\item{fft_acov}{logical indicating whether to compute autocovariances using the FFT}
 }
 \value{
 a data.table of summary metrics
 }
 \description{
-This function quickly computes the same thing as \link[posterior]{summarise_draws} with two minor differences:
+This function quickly computes the same thing as
+  \link[posterior]{summarise_draws} with two minor differences:
 \itemize{
   \item{it produces a \link[data.table]{data.table} instead of a \link[tibble]{tibble}}
   \item{there can be negligible floating point error way out past the decimal point}
@@ -26,6 +31,7 @@ This function quickly computes the same thing as \link[posterior]{summarise_draw
 \item{The input \code{ddf} can ONLY be a \link[posterior]{draws_df}. No arrays, lists, etc. Use \link[posterior]{as_draws_df} if needed.}
 \item{Activate parallelization by calling \link[mirai]{daemons} with your desired
   number of cores before calling \code{fsummary}.}
+\item{By default, \code{fsummary} uses an adaptive early-stopping method to compute parameter autocovariances. This is much faster for well mixed chains, but if most of your parameters are very badly mixed (~ESS < 100), it will be slower. In this case, turning on \code{fft_acov} can be used to compute the full autocovariances (no early stopping) using an alternative FFT-based method (similar to \link[posterior]{autocovariance}).}
 }
 }
 \examples{

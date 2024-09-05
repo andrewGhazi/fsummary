@@ -429,7 +429,6 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
 .fsummary = function(ddf,
                      conv_metrics = TRUE,
-                     verbose = TRUE,
                      chunks_list = NULL) {
 
   # if chunks are provided, recursively call this function on each chunk
@@ -441,8 +440,7 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
     #                          .args = list(chunks_list = NULL))[]
 
     .args = list(chunks_list = NULL,
-                 conv_metrics = conv_metrics,
-                 verbose = verbose)
+                 conv_metrics = conv_metrics)
 
     m_res <- vector(mode = "list", length = length(chunks_list))
     names(m_res) = names(chunks_list)
@@ -450,11 +448,9 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
     for (i in seq_along(m_res)) {
       m_res[[i]] = mirai::mirai({.f(chunk_i,
                                     conv_metrics = cm,
-                                    verbose = v,
                                     chunks_list = NULL)},
                                 .args = list(.f = .fsummary,
                                              cm = conv_metrics,
-                                             v = verbose,
                                              chunk_i = chunks_list[[i]]),
                                 .compute = "default")
     }
@@ -463,8 +459,6 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
     res = rowbind(m_res[])
   } else {
-
-    strt = Sys.time()
 
     if (!inherits(ddf, "draws_df")) cli::cli_abort("Input {.var ddf} must be a {.cls draws_df}")
 
@@ -477,17 +471,9 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
     half_iter = floor(n_iter/2)
     two_chain = floor(n_chain*2)
 
-    strt = Sys.time()
-
     q_df = fsummary:::get_q_df(ddf, variables)
 
-    if (verbose) cli::cli_alert("quantiles  {round(digits = 2, Sys.time() - strt)}")
-
-    strt = Sys.time()
-
     stats_df = fsummary:::get_stats_df(ddf, variables)
-
-    if (verbose) cli::cli_alert("stats {round(digits = 2, Sys.time() - strt)}")
 
     res = stats_df |>
       add_vars(q_df)
@@ -508,25 +494,17 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
       # a Cpp function would probably be substantially better. Especially if it took the
       # variables in grouped long format (would require a pivot). Above my pay grade.
 
-      strt = Sys.time()
-
       #draw data frame with fold
       folded_with_meds = fsummary:::get_folded_with_meds(ddf, variables, n_iter, n_chain, half_iter)
-      ddff = folded_with_meds[[1]]
-      fold_meds = folded_with_meds[[2]]
 
-      if (verbose) cli::cli_alert("ddff setup {round(digits = 2, Sys.time() - strt)}")
+      ddff = folded_with_meds[[1]]
+
+      fold_meds = folded_with_meds[[2]]
 
       # nrow(ddff) != nrow(ddf) always. Odd number of iterations -> uneven folded chain
       # lengths -> posterior:::.split_chains drops some values.
 
-      strt = Sys.time()
-
       z_scaled = fsummary:::z_scale_df(ddff, variables)
-
-      if (verbose) cli::cli_alert("z_scale {round(digits = 2, Sys.time() - strt)}")
-
-      strt = Sys.time()
 
       q_df = res |> sbt(variable %in% variables) |> slt(q5, q95)
       # ^ re-assign q_df here because it's already joined to res and we need to remove any zero-variance variables that were dropped
@@ -535,33 +513,19 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
       if (exists("zv_vars")) ess_tail_df = rowbind(ess_tail_df, add_zv_vars(ess_tail_df, zv_vars))
 
-      if (verbose) cli::cli_alert("fess_tail {round(digits = 2, Sys.time() - strt)}")
-
-      strt = Sys.time()
-
       demedian_abs = \(x, y=fold_meds) abs(TRA(x, STATS = y))
 
       settransformv(ddff, variables, demedian_abs, apply = FALSE)
 
       z_scaled_folded = fsummary:::z_scale_df(ddff, variables)
 
-      if (verbose) cli::cli_alert("z_scale_fold {round(digits = 2, Sys.time() - strt)}")
-
-      strt = Sys.time()
-
       rh_df = fsummary:::frhat(z_scaled, z_scaled_folded, n_iter, n_chain, variables)
 
       if (exists("zv_vars")) rh_df = rowbind(rh_df, add_zv_vars(rh_df, zv_vars))
 
-      if (verbose) cli::cli_alert("rhat {round(digits = 2, Sys.time() - strt)}")
-
-      strt = Sys.time()
-
       ess_bulk_df = fsummary:::fess_bulk(z_scaled, half_iter, two_chain, variables)
 
       if (exists("zv_vars")) ess_bulk_df = rowbind(ess_bulk_df, add_zv_vars(ess_bulk_df, zv_vars))
-
-      if (verbose) cli::cli_alert("fess_bulk {round(digits = 2, Sys.time() - strt)}")
 
       res = join(res, rh_df,
                  on = "variable",
@@ -583,8 +547,8 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
 #' Fast summary function for cmdstanr draws
 #'
-#' @description
-#' This function quickly computes the same thing as \link[posterior]{summarise_draws} with two minor differences:
+#' @description This function quickly computes the same thing as
+#'   \link[posterior]{summarise_draws} with two minor differences:
 #' \itemize{
 #'   \item{it produces a \link[data.table]{data.table} instead of a \link[tibble]{tibble}}
 #'   \item{there can be negligible floating point error way out past the decimal point}
@@ -592,11 +556,14 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 #'
 #' @param ddf a draws_df
 #' @param conv_metrics logical indicating whether to compute convergence metrics (slower)
+#' @param fft_acov logical indicating whether to compute autocovariances using the FFT
+#' @param verbose logical indicating whether to print helpful messages
 #' @details
 #' \itemize{
 #' \item{The input \code{ddf} can ONLY be a \link[posterior]{draws_df}. No arrays, lists, etc. Use \link[posterior]{as_draws_df} if needed.}
 #' \item{Activate parallelization by calling \link[mirai]{daemons} with your desired
 #'   number of cores before calling \code{fsummary}.}
+#' \item{By default, \code{fsummary} uses an adaptive early-stopping method to compute parameter autocovariances. This is much faster for well mixed chains, but if most of your parameters are very badly mixed (~ESS < 100), it will be slower. In this case, turning on \code{fft_acov} can be used to compute the full autocovariances (no early stopping) using an alternative FFT-based method (similar to \link[posterior]{autocovariance}).}
 #' }
 #' @examples
 #' fsummary(test_ddf)
@@ -620,14 +587,14 @@ fsummary = function(ddf,
     chunks_list = lapply(chunks, \(x) slt(ddf, c(x$v, ".chain", ".iteration", ".draw")));
 
     res = .fsummary(ddf = NULL,
-                    conv_metrics = conv_metrics, verbose = verbose,
+                    conv_metrics = conv_metrics,
                     chunks_list = chunks_list) |>
       add_vars(rowbind(chunks)) |>
       roworder(vi) |>
       slt(-i, -v, -vi)
   } else {
     res = .fsummary(ddf,
-                    conv_metrics = conv_metrics, verbose = verbose)
+                    conv_metrics = conv_metrics)
   }
 
   res
