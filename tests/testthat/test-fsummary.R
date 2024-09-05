@@ -7,6 +7,15 @@ test_that("same answer as posterior::summarise_draws()", {
                tolerance = 1e-6)
 })
 
+test_that("same answer as posterior::summarise_draws() with fft", {
+
+  fsumm_res = fsummary(test_ddf, fft_acov = TRUE)
+  expect_equal(fsumm_res,
+               test_res,
+               ignore_attr = TRUE,
+               tolerance = 1e-6)
+})
+
 test_that("same answer on big result", {
 
   mirai::daemons(1)

@@ -164,9 +164,9 @@ fess = function(ddff, n_iter, n_chain, variables, stop_early) {
     split_chains[[i]] = setColnames(split_chains[[i]], variables)
   }
 
-  chain_info = fsummary:::get_chain_info(ddff, n_cov, offset)
-
   if (stop_early) {
+    chain_info = fsummary:::get_chain_info(ddff, n_cov, offset)
+
     ch1_by_chain = fsummary:::get_ch1(split_chains)
 
     if (length(variables) == 1) ch1_by_chain = lapply(ch1_by_chain, as.matrix)
@@ -175,6 +175,8 @@ fess = function(ddff, n_iter, n_chain, variables, stop_early) {
     acov_means = fsummary:::get_acov_means(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info,
                                            stop_early = TRUE)
   } else {
+    chain_info = fsummary:::get_chain_info(ddff, n_iter, offset = 0)
+
     acov_means = fsummary:::get_acov_means(split_chains, ch1_by_chain = NULL,
                                            variables, n_cov, offset, chain_info,
                                            stop_early = FALSE)
