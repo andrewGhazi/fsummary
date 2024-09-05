@@ -35,7 +35,6 @@ frhat = function(z_scaled, z_scaled_folded, n_iter, n_chain, variables) {
     setNames(c("variable", "rhat"))
 }
 
-
 .ch1_chain_dt = function(chain_M) {
   fsummary:::cov_head(chain_M, n=1, offset=0)[1,]
 }
@@ -71,6 +70,21 @@ get_chain_info = function(ddff, n_cov, offset) {
   res
 }
 
+.fftm_chain = function(X) {
+  nr = nrow(X)
+
+  k = nextn(nr)
+
+  vx = fvar(X)
+
+  fX = fsummary:::fftm(X, k)
+
+  res = TRA(fX, vx / fX[1,] * (nr-1)/nr, FUN = "*") |>
+    fsummary:::.check_for_nans(vx)
+
+  res |> qDT()
+}
+
 .cov_head = function(chain_Ml, ch1, n_cov=n_cov, offset=offset) {
 
   M = chain_Ml
@@ -87,18 +101,26 @@ get_chain_info = function(ddff, n_cov, offset) {
   res |> qDT()
 }
 
-get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info) {
+get_acov_means = function(split_chains, ch1_by_chain,
+                          variables, n_cov, offset, chain_info,
+                          stop_early) {
 
-  n_iter = nrow(split_chains[[1]])
+  if (stop_early) {
+    n_iter = nrow(split_chains[[1]])
 
-  minn = min(n_cov, n_iter)
-  mino = min(offset, n_iter)
+    minn = min(n_cov, n_iter)
+    mino = min(offset, n_iter)
 
-  acov = mapply(.cov_head,
-                split_chains,
-                ch1_by_chain,
-                MoreArgs = list(n_cov = minn, offset = mino),
-                SIMPLIFY = FALSE)
+    acov = mapply(.cov_head,
+                  split_chains,
+                  ch1_by_chain,
+                  MoreArgs = list(n_cov = minn, offset = mino),
+                  SIMPLIFY = FALSE)
+  } else {
+
+    acov = lapply(split_chains,
+                  .fftm_chain)
+  }
 
   acov |>
     rowbind(use.names = FALSE) |>
@@ -108,7 +130,7 @@ get_acov_means = function(split_chains, ch1_by_chain, variables, n_cov, offset, 
     fmean(use.g.names = FALSE)
 }
 
-fess = function(ddff, n_iter, n_chain, variables) {
+fess = function(ddff, n_iter, n_chain, variables, stop_early) {
 
   # This is by far the slowest part, 76% of time spent up through the first while loop is here. 2.23s for dyingforacup
   # acov = ddff |>
@@ -142,14 +164,21 @@ fess = function(ddff, n_iter, n_chain, variables) {
     split_chains[[i]] = setColnames(split_chains[[i]], variables)
   }
 
-  ch1_by_chain = fsummary:::get_ch1(split_chains)
-
-  if (length(variables) == 1) ch1_by_chain = lapply(ch1_by_chain, as.matrix)
-  # ^ this gets re-used in the while loop(s) if additional covariance terms are needed
-
   chain_info = fsummary:::get_chain_info(ddff, n_cov, offset)
 
-  acov_means = fsummary:::get_acov_means(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info)
+  if (stop_early) {
+    ch1_by_chain = fsummary:::get_ch1(split_chains)
+
+    if (length(variables) == 1) ch1_by_chain = lapply(ch1_by_chain, as.matrix)
+    # ^ this gets re-used in the while loop(s) if additional covariance terms are needed
+
+    acov_means = fsummary:::get_acov_means(split_chains, ch1_by_chain, variables, n_cov, offset, chain_info,
+                                           stop_early = TRUE)
+  } else {
+    acov_means = fsummary:::get_acov_means(split_chains, ch1_by_chain = NULL,
+                                           variables, n_cov, offset, chain_info,
+                                           stop_early = FALSE)
+  }
 
   # collapse::pivot() bugs out if it's only one variable
   mean_var_df = acov_means |>
@@ -203,7 +232,7 @@ fess = function(ddff, n_iter, n_chain, variables) {
   track = seq_along(variables)
   max_t = rep(2, length(variables))
 
-  n_cov_terms = n_cov # number of autocovariance terms we currently have
+  n_cov_terms = ifelse(stop_early, n_cov, n_iter) # number of autocovariance terms we currently have
   offset = n_cov # where to start if we need to add more
   offset_inc = 8 # how many more we'll collect if needed
 
@@ -232,7 +261,8 @@ fess = function(ddff, n_iter, n_chain, variables) {
                                                   ch1_by_chain |> lapply(\(x) x[track]),
                                                   variables[track],
                                                   offset_inc, offset,
-                                                  addl_chain_info)
+                                                  addl_chain_info,
+                                                  stop_early = stop_early)
 
       addl_tacov = addl_acov_means |>
         slt(-`.iteration`) |>
@@ -341,7 +371,7 @@ get_quantile_ind_df = function(ddff, q_df, variables, q) {
     add_vars(ddff |> get_vars(c(".chain", ".iteration", ".draw")))
 }
 
-fess_tail = function(ddff, q_df, half_iter, two_chain, variables) {
+fess_tail = function(ddff, q_df, half_iter, two_chain, variables, stop_early) {
   q5_I = ddff |>
     get_vars(variables) |>
     qM() |>
@@ -356,8 +386,8 @@ fess_tail = function(ddff, q_df, half_iter, two_chain, variables) {
     fsummary:::ltet(0) |>
     cbind(ddff |> get_vars(c(".chain", ".iteration", ".draw")))
 
-  ess_tail5  = fess( q5_I, half_iter, two_chain, variables)
-  ess_tail95 = fess(q95_I, half_iter, two_chain, variables)
+  ess_tail5  = fess( q5_I, half_iter, two_chain, variables, stop_early)
+  ess_tail95 = fess(q95_I, half_iter, two_chain, variables, stop_early)
 
   data.table(variable = variables,
              ess_tail = pmin(ess_tail5, ess_tail95))
@@ -377,9 +407,9 @@ get_chunks = function(variables) {
     split(by = "i")
 }
 
-fess_bulk = function(ddff, half_iter, two_chain, variables) {
+fess_bulk = function(ddff, half_iter, two_chain, variables, stop_early) {
   data.table(variable = variables,
-             ess_bulk = fess(ddff, half_iter, two_chain, variables))
+             ess_bulk = fess(ddff, half_iter, two_chain, variables, stop_early))
 }
 
 get_stats_df = function(ddf, variables) {
@@ -429,6 +459,7 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
 .fsummary = function(ddf,
                      conv_metrics = TRUE,
+                     stop_early = TRUE,
                      chunks_list = NULL) {
 
   # if chunks are provided, recursively call this function on each chunk
@@ -509,7 +540,7 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
       q_df = res |> sbt(variable %in% variables) |> slt(q5, q95)
       # ^ re-assign q_df here because it's already joined to res and we need to remove any zero-variance variables that were dropped
 
-      ess_tail_df = fsummary:::fess_tail(ddff, q_df, half_iter, two_chain, variables)
+      ess_tail_df = fsummary:::fess_tail(ddff, q_df, half_iter, two_chain, variables, stop_early)
 
       if (exists("zv_vars")) ess_tail_df = rowbind(ess_tail_df, add_zv_vars(ess_tail_df, zv_vars))
 
@@ -523,7 +554,7 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
       if (exists("zv_vars")) rh_df = rowbind(rh_df, add_zv_vars(rh_df, zv_vars))
 
-      ess_bulk_df = fsummary:::fess_bulk(z_scaled, half_iter, two_chain, variables)
+      ess_bulk_df = fsummary:::fess_bulk(z_scaled, half_iter, two_chain, variables, stop_early)
 
       if (exists("zv_vars")) ess_bulk_df = rowbind(ess_bulk_df, add_zv_vars(ess_bulk_df, zv_vars))
 
@@ -572,8 +603,10 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 #' @export
 fsummary = function(ddf,
                     conv_metrics = TRUE,
+                    fft_acov = FALSE,
                     verbose = FALSE) {
 
+  stop_early = !fft_acov
   variables = names(ddf) |> head(-3)
 
   if (multiple_daemons()) {
@@ -588,13 +621,15 @@ fsummary = function(ddf,
 
     res = .fsummary(ddf = NULL,
                     conv_metrics = conv_metrics,
+                    stop_early = stop_early,
                     chunks_list = chunks_list) |>
       add_vars(rowbind(chunks)) |>
       roworder(vi) |>
       slt(-i, -v, -vi)
   } else {
     res = .fsummary(ddf,
-                    conv_metrics = conv_metrics)
+                    conv_metrics = conv_metrics,
+                    stop_early = stop_early)
   }
 
   res

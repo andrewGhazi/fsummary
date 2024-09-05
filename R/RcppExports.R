@@ -13,3 +13,7 @@ center_split_df <- function(df, c_id, n_chain, n_iter) {
     .Call(`_fsummary_center_split_df`, df, c_id, n_chain, n_iter)
 }
 
+fftm <- function(x, k) {
+    .Call(`_fsummary_fftm`, x, k)
+}
+

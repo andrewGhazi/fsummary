@@ -4,16 +4,16 @@
 \alias{fsummary}
 \title{Fast summary function for cmdstanr draws}
 \usage{
-fsummary(ddf, conv_metrics = TRUE, verbose = FALSE)
+fsummary(ddf, conv_metrics = TRUE, fft_acov = FALSE, verbose = FALSE)
 }
 \arguments{
 \item{ddf}{a draws_df}
 
 \item{conv_metrics}{logical indicating whether to compute convergence metrics (slower)}
 
-\item{verbose}{logical indicating whether to print helpful messages}
-
 \item{fft_acov}{logical indicating whether to compute autocovariances using the FFT}
+
+\item{verbose}{logical indicating whether to print helpful messages}
 }
 \value{
 a data.table of summary metrics
