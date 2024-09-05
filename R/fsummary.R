@@ -596,7 +596,7 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 #' \item{The input \code{ddf} can ONLY be a \link[posterior]{draws_df}. No arrays, lists, etc. Use \link[posterior]{as_draws_df} if needed.}
 #' \item{Activate parallelization by calling \link[mirai]{daemons} with your desired
 #'   number of cores before calling \code{fsummary}.}
-#' \item{By default, \code{fsummary} uses an adaptive early-stopping method to compute parameter autocovariances. This is much faster for well mixed chains, but if most of your parameters are very badly mixed (~ESS < 100), it will be slower. In this case, turning on \code{fft_acov} can be used to compute the full autocovariances (no early stopping) using an alternative FFT-based method (similar to \link[posterior]{autocovariance}).}
+#' \item{By default, \code{fsummary} uses an adaptive early-stopping method to compute parameter autocovariances. This is much faster for well mixed chains, but if most of your parameters are very badly mixed (~ESS < 100), it will be slower. In this case, turning on \code{fft_acov} can be used to compute the full autocovariances in one go (without repeated stop-and-go) using an alternative FFT-based method (similar to \link[posterior]{autocovariance}). If you're in this situation, you should probably focus your time on fixing your model instead of speeding up summaries :P}
 #' }
 #' @examples
 #' fsummary(test_ddf)
