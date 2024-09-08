@@ -19,7 +19,7 @@ test_ddf = rnorm(n_iter*n_chain*n_param) |>
 test_res = test_ddf |>
   posterior::summarise_draws()
 
-# usethis::use_data(test_ddf, overwrite = TRUE, internal = TRUE)
+usethis::use_data(test_ddf, overwrite = TRUE)
 # usethis::use_data(test_res, overwrite = TRUE, internal = TRUE)
 
 # Large example - don't include the (big) ddf in the package for this one:
