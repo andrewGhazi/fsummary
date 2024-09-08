@@ -401,7 +401,7 @@ get_chunks = function(variables) {
   chunks = data.table::data.table(i = rep(seq_len(n_job),
                                           length.out = length(variables)),
                                   v = variables,
-                                  vi = seq_along(variables)) |>
+                                  var_i = seq_along(variables)) |>
     roworder(i) |>
     split(by = "i")
 }
@@ -623,8 +623,8 @@ fsummary = function(ddf,
                     stop_early = stop_early,
                     chunks_list = chunks_list) |>
       add_vars(rowbind(chunks)) |>
-      roworder(vi) |>
-      slt(-i, -v, -vi)
+      roworder(var_i) |>
+      slt(-i, -v, -var_i)
   } else {
     res = .fsummary(ddf,
                     conv_metrics = conv_metrics,
