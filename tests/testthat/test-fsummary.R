@@ -89,25 +89,7 @@ test_that("same answer on big result, parallel", {
 
 test_that("poorly mixed chains", {
 
-  n_chain = 4
-  n_iter = 1000
-  n_param = 5
-
   mirai::daemons(0)
-
-  set.seed(123)
-
-  bad_conv_ddf = matrix(rnorm(n_chain*n_iter*n_param), ncol = n_param) |>
-    qDT() |>
-    mtt(`.draw` = 1:(n_chain*n_iter),
-        `.iteration` = rep(1:n_iter, times = n_chain),
-        `.chain` = rep(1:n_chain, each = n_iter)) |>
-    mtt(V1 = V1 + 1*c(`.chain` == 2),
-        V2 = V2 + 1*(`.chain` %in% c(3,4))) |> # shift the mean up by 1 on one or two chains
-    posterior::as_draws_df()
-
-  bad_conv_post = bad_conv_ddf |>
-    posterior::summarise_draws()
 
   bad_conv_fsum = bad_conv_ddf |>
     fsummary::fsummary()
