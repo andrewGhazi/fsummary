@@ -117,5 +117,5 @@ second!)
 - faster convergence metrics with better ✔ ~~ranking~~ / qnorm (I’ve
   gotten the inverse normal transformation going twice as fast in Julia
   at least…)
-- Option for FFT autocovariance if user knows they have badly converged
-  parameters
+- ✔ ~~Option for FFT autocovariance if user knows they have badly
+  converged parameters~~
