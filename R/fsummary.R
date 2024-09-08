@@ -492,7 +492,7 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
     if (!inherits(ddf, "draws_df")) cli::cli_abort("Input {.var ddf} must be a {.cls draws_df}")
 
-    variables = names(ddf) |> head(-3)
+    variables = names(ddf) |> utils::head(-3)
     ddf = ddf |> qDT()
 
     n_iter = max(ddf$`.iteration`)
@@ -606,7 +606,7 @@ fsummary = function(ddf,
                     verbose = FALSE) {
 
   stop_early = !fft_acov
-  variables = names(ddf) |> head(-3)
+  variables = names(ddf) |> utils::head(-3)
 
   if (multiple_daemons()) {
 
