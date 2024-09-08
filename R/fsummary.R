@@ -73,7 +73,7 @@ get_chain_info = function(ddff, n_cov, offset) {
 .fftm_chain = function(X) {
   nr = nrow(X)
 
-  k = nextn(nr)
+  k = stats::nextn(nr)
 
   vx = fvar(X)
 
