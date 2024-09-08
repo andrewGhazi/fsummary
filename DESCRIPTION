@@ -13,7 +13,6 @@ Imports:
     cli,
     collapse,
     data.table,
-    matrixStats,
     mirai,
     Rcpp,
     rlang,

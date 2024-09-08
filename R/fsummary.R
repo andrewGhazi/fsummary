@@ -316,11 +316,8 @@ fess = function(ddff, n_iter, n_chain, variables, stop_early) {
     relevant = mt_df |> sbt((mt - 2) >= t)
     var_i = relevant$i
 
-    two_ahd =  t +  1:2
-    two_bed =  t + -1:0
-
-    two_ahd_sum = rh_m[var_i, two_ahd, drop = FALSE] |> matrixStats::rowSums2()
-    two_bhd_sum = rh_m[var_i, two_bed, drop = FALSE] |> matrixStats::rowSums2()
+    two_ahd_sum = rh_m[var_i, t+1] + rh_m[var_i, t+2]
+    two_bhd_sum = rh_m[var_i, t-1] + rh_m[var_i, t]
 
     update_i = which(two_ahd_sum > two_bhd_sum)
 
