@@ -477,10 +477,10 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
     for (i in seq_along(m_res)) {
       m_res[[i]] = mirai::mirai({.f(chunk_i,
-                                    conv_metrics = cm,
+                                    conv_metrics = conv_met,
                                     chunks_list = NULL)},
                                 .args = list(.f = .fsummary,
-                                             cm = conv_metrics,
+                                             conv_met = conv_metrics,
                                              chunk_i = chunks_list[[i]]),
                                 .compute = "default")
     }
