@@ -6,8 +6,8 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of fsummary is to compute posterior summaries from `cmdstanr`
-FAST!
+The goal of fsummary is to compute posterior summaries of `draws_df`
+objects - FAST!
 
 ## Installation
 
