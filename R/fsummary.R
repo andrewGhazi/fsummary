@@ -1,5 +1,5 @@
 multiple_daemons = function() {
-  is.matrix(mirai::status()$daemons) && nrow(mirai::status()$daemons) > 1
+  !is.null(mirai::nextget("n")) && mirai::nextget("n") > 1L
 }
 
 add_zv_vars = function(sdf, zv_vars) {
