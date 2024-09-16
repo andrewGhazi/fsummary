@@ -119,3 +119,7 @@ second!)
   at least…)
 - ✔ ~~Option for FFT autocovariance if user knows they have badly
   converged parameters~~
+- Submission to CRAN. If you use this package and it would be helpful to
+  you for it to be available through CRAN, submit an issue saying so.
+  I’ve basically got it ready to submit, it’s just not clear to me
+  whether it would be worth doing the paperwork.
