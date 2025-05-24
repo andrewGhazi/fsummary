@@ -17,3 +17,19 @@ fftm <- function(x, k) {
     .Call(`_fsummary_fftm`, x, k)
 }
 
+fqnorm3v <- function(p) {
+    .Call(`_fsummary_fqnorm3v`, p)
+}
+
+fqnorm <- function(p) {
+    .Call(`_fsummary_fqnorm`, p)
+}
+
+fqnorm6v <- function(p) {
+    .Call(`_fsummary_fqnorm6v`, p)
+}
+
+fqnorm7v <- function(p) {
+    .Call(`_fsummary_fqnorm7v`, p)
+}
+

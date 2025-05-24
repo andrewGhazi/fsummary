@@ -424,7 +424,7 @@ get_stats_df = function(ddf, variables) {
 }
 
 z_scale = function(x, n) {
-  qnorm((fsummary:::myrank(x)[,1] - 3/8) / (n - 2 * 3/8 + 1))
+  fsummary:::fqnorm((fsummary:::myrank(x)[,1] - 3/8) / (n - 2 * 3/8 + 1))
 }
 
 z_scale_df = function(ddff, variables) {
