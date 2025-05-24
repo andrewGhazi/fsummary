@@ -61,17 +61,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// fqnorm3v
-arma::vec fqnorm3v(arma::vec p);
-RcppExport SEXP _fsummary_fqnorm3v(SEXP pSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec >::type p(pSEXP);
-    rcpp_result_gen = Rcpp::wrap(fqnorm3v(p));
-    return rcpp_result_gen;
-END_RCPP
-}
 // fqnorm
 arma::vec fqnorm(arma::vec p);
 RcppExport SEXP _fsummary_fqnorm(SEXP pSEXP) {
@@ -83,38 +72,13 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// fqnorm6v
-arma::vec fqnorm6v(arma::vec p);
-RcppExport SEXP _fsummary_fqnorm6v(SEXP pSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec >::type p(pSEXP);
-    rcpp_result_gen = Rcpp::wrap(fqnorm6v(p));
-    return rcpp_result_gen;
-END_RCPP
-}
-// fqnorm7v
-arma::vec fqnorm7v(arma::vec p);
-RcppExport SEXP _fsummary_fqnorm7v(SEXP pSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec >::type p(pSEXP);
-    rcpp_result_gen = Rcpp::wrap(fqnorm7v(p));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fsummary_cov_head", (DL_FUNC) &_fsummary_cov_head, 3},
     {"_fsummary_myrank", (DL_FUNC) &_fsummary_myrank, 1},
     {"_fsummary_center_split_df", (DL_FUNC) &_fsummary_center_split_df, 4},
     {"_fsummary_fftm", (DL_FUNC) &_fsummary_fftm, 2},
-    {"_fsummary_fqnorm3v", (DL_FUNC) &_fsummary_fqnorm3v, 1},
     {"_fsummary_fqnorm", (DL_FUNC) &_fsummary_fqnorm, 1},
-    {"_fsummary_fqnorm6v", (DL_FUNC) &_fsummary_fqnorm6v, 1},
-    {"_fsummary_fqnorm7v", (DL_FUNC) &_fsummary_fqnorm7v, 1},
     {NULL, NULL, 0}
 };
 
