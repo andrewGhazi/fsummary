@@ -4,6 +4,7 @@
 # fsummary
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
 The goal of fsummary is to compute posterior summaries of `draws_df`
@@ -75,10 +76,10 @@ bench::mark(fsummary = {fsummary(ddf)},
             filter_gc = FALSE)
 ```
 
-      expression      min median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
-      <bch:expr> <bch:tm> <bch:>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
-    1 fsummary      1.68s  1.73s     0.549     1.2GB     6.10    10   111     18.21s
-    2 posterior     6.03s  6.27s     0.158    5.13GB     4.43    10   281      1.06m
+      expression      min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
+      <bch:expr> <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
+    1 fsummary      1.64s    1.67s     0.581    1.05GB     5.11    10    88     17.23s
+    2 posterior     6.24s    6.44s     0.156    5.13GB     3.36    10   215      1.07m
 
 ``` r
 bench::mark(fsummary = {fsummary(ddf,
@@ -92,8 +93,8 @@ bench::mark(fsummary = {fsummary(ddf,
 
       expression      min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
       <bch:expr> <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
-    1 fsummary   190.43ms 198.94ms     4.46     92.1MB     2.67    10     6      2.24s
-    2 posterior     1.09s    1.12s     0.822     759MB     4.85    10    59     12.17s
+    1 fsummary   188.89ms 194.65ms     4.50     92.1MB     2.70    10     6      2.22s
+    2 posterior     1.08s    1.11s     0.871     759MB     4.10    10    47     11.47s
 
 ![](man/figures/comparison.png)
 
@@ -114,9 +115,8 @@ second!)
 # TODO
 
 - ✔ ~~parallelization with `mirai`~~
-- faster convergence metrics with better ✔ ~~ranking~~ / qnorm (I’ve
-  gotten the inverse normal transformation going twice as fast in Julia
-  at least…)
+  - Something broke. Fix it.
+- faster convergence metrics with better ✔ ~~ranking~~ / ~~qnorm~~
 - ✔ ~~Option for FFT autocovariance if user knows they have badly
   converged parameters~~
 - Submission to CRAN. If you use this package and it would be helpful to
