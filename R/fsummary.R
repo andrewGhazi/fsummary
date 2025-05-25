@@ -396,7 +396,7 @@ get_chunks = function(variables) {
 
   status_res = mirai::status()
 
-  n_job = 2 * nrow(status_res$daemons)
+  n_job = 2 * status_res$connections
 
   chunks = data.table::data.table(i = rep(seq_len(n_job),
                                           length.out = length(variables)),

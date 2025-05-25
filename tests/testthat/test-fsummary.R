@@ -18,8 +18,6 @@ test_that("same answer as posterior::summarise_draws() with fft", {
 
 test_that("same answer on big result", {
 
-  mirai::daemons(1)
-
   n = 4000
   d = 1000
 
@@ -48,6 +46,7 @@ test_that("same answer on big result", {
 })
 
 test_that("same answer as posterior::summarise_draws(), parallel", {
+  mirai::daemons(0)
   mirai::daemons(6)
   fsumm_res = fsummary(test_ddf)
   expect_equal(fsumm_res,
@@ -58,6 +57,7 @@ test_that("same answer as posterior::summarise_draws(), parallel", {
 
 test_that("same answer on big result, parallel", {
 
+  mirai::daemons(0)
   mirai::daemons(6)
 
   n = 4000
