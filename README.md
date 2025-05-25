@@ -102,12 +102,12 @@ You can set up daemons with
 [`mirai`](https://shikokuchuo.net/mirai/index.html) for parallelization:
 
 ``` r
-mirai::daemons(4)
+mirai::daemons(4, dispatcher = FALSE)
 system.time({fsummary(ddf)})
 ```
 
        user  system elapsed 
-      0.018   0.012   1.227 
+      0.019   0.016   0.737 
 
 (This helps more once you have summaries that take longer than a
 second!)
@@ -115,8 +115,8 @@ second!)
 # TODO
 
 - ✔ ~~parallelization with `mirai`~~
-  - Something broke. Fix it.
-- faster convergence metrics with better ✔ ~~ranking~~ / ~~qnorm~~
+  - ✔ ~~Something broke. Fix it.~~
+- faster convergence metrics with better ✔ ~~ranking~~ / ✔ ~~qnorm~~
 - ✔ ~~Option for FFT autocovariance if user knows they have badly
   converged parameters~~
 - Submission to CRAN. If you use this package and it would be helpful to
