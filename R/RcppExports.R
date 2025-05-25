@@ -21,3 +21,7 @@ fqnorm <- function(p) {
     .Call(`_fsummary_fqnorm`, p)
 }
 
+fzscale <- function(x, n) {
+    .Call(`_fsummary_fzscale`, x, n)
+}
+

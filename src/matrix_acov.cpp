@@ -237,6 +237,11 @@ arma::vec fqnorm(arma::vec p) {
   return(p);
 }
 
+// [[Rcpp::export]]
+arma::vec fzscale(arma::vec x, arma::uword n) {
+  return ( fqnorm((myrank(x) - 3.0/8.0) / (n - 2.0 * 3.0/8.0 + 1.0)) );
+}
+
 // // [[Rcpp::export]]
 // DataFrame dfranks(DataFrame df) {
 //

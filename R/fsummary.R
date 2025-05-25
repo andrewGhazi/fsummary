@@ -423,14 +423,10 @@ get_stats_df = function(ddf, variables) {
   return(res)
 }
 
-z_scale = function(x, n) {
-  fsummary:::fqnorm((fsummary:::myrank(x)[,1] - 3/8) / (n - 2 * 3/8 + 1))
-}
-
 z_scale_df = function(ddff, variables) {
   ddff |> # 3.7s
     mtt(across(variables,
-               fsummary:::z_scale,
+               fsummary:::fzscale,
                n = nrow(ddff)))
 }
 
@@ -463,7 +459,6 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 
   # if chunks are provided, recursively call this function on each chunk
   if (!is.null(chunks_list)) {
-    # Man I hate this 2D mapping behavior of mirai_map
 
     # m_res = mirai::mirai_map(chunks_list,
     #                          .fsummary,

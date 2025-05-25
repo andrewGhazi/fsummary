@@ -72,6 +72,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fzscale
+arma::vec fzscale(arma::vec x, arma::uword n);
+RcppExport SEXP _fsummary_fzscale(SEXP xSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type x(xSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(fzscale(x, n));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fsummary_cov_head", (DL_FUNC) &_fsummary_cov_head, 3},
@@ -79,6 +91,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fsummary_center_split_df", (DL_FUNC) &_fsummary_center_split_df, 4},
     {"_fsummary_fftm", (DL_FUNC) &_fsummary_fftm, 2},
     {"_fsummary_fqnorm", (DL_FUNC) &_fsummary_fqnorm, 1},
+    {"_fsummary_fzscale", (DL_FUNC) &_fsummary_fzscale, 2},
     {NULL, NULL, 0}
 };
 
