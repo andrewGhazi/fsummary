@@ -39,7 +39,7 @@ n_iter = 1000
 n_var = 1000
 
 ddf = rnorm(n_chain * n_iter * n_var) |> 
-  matrix(ncol = 1000) |> 
+  matrix(ncol = n_iter) |> 
   qDT() |> 
   mtt(`.draw` = 1:(n_iter*n_chain),
       `.iteration` = rep(1:n_iter, times = n_chain),
@@ -57,7 +57,7 @@ fsummary(ddf) |> head()
 #> 6:       V6 -0.00366 -0.000109 1.000 1.013 -1.66  1.66     1     3547     3824
 ```
 
-On one core, it’s about 3 times faster than `summarise_draws()` when
+On one core, it’s about 4 times faster than `summarise_draws()` when
 computing convergence metrics and 5-6 times faster without. A couple
 quick tests on my machine:
 
@@ -78,8 +78,8 @@ bench::mark(fsummary = {fsummary(ddf)},
 
       expression      min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
       <bch:expr> <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
-    1 fsummary      1.64s    1.67s     0.581    1.05GB     5.11    10    88     17.23s
-    2 posterior     6.24s    6.44s     0.156    5.13GB     3.36    10   215      1.07m
+    1 fsummary      1.45s    1.46s     0.648    1.29GB     6.80    10   105     15.44s
+    2 posterior     6.26s    6.43s     0.156    5.13GB     3.80    10   244      1.07m
 
 ``` r
 bench::mark(fsummary = {fsummary(ddf,
@@ -93,8 +93,8 @@ bench::mark(fsummary = {fsummary(ddf,
 
       expression      min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
       <bch:expr> <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
-    1 fsummary   188.89ms 194.65ms     4.50     92.1MB     2.70    10     6      2.22s
-    2 posterior     1.08s    1.11s     0.871     759MB     4.10    10    47     11.47s
+    1 fsummary    187.7ms  194.3ms     5.06     92.1MB     3.04    10     6      1.98s
+    2 posterior      1.1s    1.14s     0.838     759MB     4.19    10    50     11.94s
 
 ![](man/figures/comparison.png)
 

@@ -9,6 +9,18 @@ myrank <- function(v) {
     .Call(`_fsummary_myrank`, v)
 }
 
+asort <- function(v) {
+    .Call(`_fsummary_asort`, v)
+}
+
+myrank2 <- function(sv, o, res) {
+    .Call(`_fsummary_myrank2`, sv, o, res)
+}
+
+myrank3 <- function(v, n) {
+    .Call(`_fsummary_myrank3`, v, n)
+}
+
 center_split_df <- function(df, c_id, n_chain, n_iter) {
     .Call(`_fsummary_center_split_df`, df, c_id, n_chain, n_iter)
 }
@@ -21,7 +33,7 @@ fqnorm <- function(p) {
     .Call(`_fsummary_fqnorm`, p)
 }
 
-fzscale <- function(x, n) {
-    .Call(`_fsummary_fzscale`, x, n)
+fzscale <- function(sx, o, res, n) {
+    .Call(`_fsummary_fzscale`, sx, o, res, n)
 }
 

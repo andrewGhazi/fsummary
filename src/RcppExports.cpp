@@ -35,6 +35,42 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// asort
+arma::vec asort(arma::vec v);
+RcppExport SEXP _fsummary_asort(SEXP vSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type v(vSEXP);
+    rcpp_result_gen = Rcpp::wrap(asort(v));
+    return rcpp_result_gen;
+END_RCPP
+}
+// myrank2
+arma::vec myrank2(arma::vec sv, arma::uvec o, arma::vec res);
+RcppExport SEXP _fsummary_myrank2(SEXP svSEXP, SEXP oSEXP, SEXP resSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type sv(svSEXP);
+    Rcpp::traits::input_parameter< arma::uvec >::type o(oSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type res(resSEXP);
+    rcpp_result_gen = Rcpp::wrap(myrank2(sv, o, res));
+    return rcpp_result_gen;
+END_RCPP
+}
+// myrank3
+arma::vec myrank3(NumericVector v, int n);
+RcppExport SEXP _fsummary_myrank3(SEXP vSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type v(vSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(myrank3(v, n));
+    return rcpp_result_gen;
+END_RCPP
+}
 // center_split_df
 List center_split_df(DataFrame df, IntegerVector c_id, int n_chain, int n_iter);
 RcppExport SEXP _fsummary_center_split_df(SEXP dfSEXP, SEXP c_idSEXP, SEXP n_chainSEXP, SEXP n_iterSEXP) {
@@ -73,14 +109,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // fzscale
-arma::vec fzscale(arma::vec x, arma::uword n);
-RcppExport SEXP _fsummary_fzscale(SEXP xSEXP, SEXP nSEXP) {
+arma::vec fzscale(arma::vec sx, arma::uvec o, arma::vec res, arma::uword n);
+RcppExport SEXP _fsummary_fzscale(SEXP sxSEXP, SEXP oSEXP, SEXP resSEXP, SEXP nSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec >::type x(xSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type sx(sxSEXP);
+    Rcpp::traits::input_parameter< arma::uvec >::type o(oSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type res(resSEXP);
     Rcpp::traits::input_parameter< arma::uword >::type n(nSEXP);
-    rcpp_result_gen = Rcpp::wrap(fzscale(x, n));
+    rcpp_result_gen = Rcpp::wrap(fzscale(sx, o, res, n));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -88,10 +126,13 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_fsummary_cov_head", (DL_FUNC) &_fsummary_cov_head, 3},
     {"_fsummary_myrank", (DL_FUNC) &_fsummary_myrank, 1},
+    {"_fsummary_asort", (DL_FUNC) &_fsummary_asort, 1},
+    {"_fsummary_myrank2", (DL_FUNC) &_fsummary_myrank2, 3},
+    {"_fsummary_myrank3", (DL_FUNC) &_fsummary_myrank3, 2},
     {"_fsummary_center_split_df", (DL_FUNC) &_fsummary_center_split_df, 4},
     {"_fsummary_fftm", (DL_FUNC) &_fsummary_fftm, 2},
     {"_fsummary_fqnorm", (DL_FUNC) &_fsummary_fqnorm, 1},
-    {"_fsummary_fzscale", (DL_FUNC) &_fsummary_fzscale, 2},
+    {"_fsummary_fzscale", (DL_FUNC) &_fsummary_fzscale, 4},
     {NULL, NULL, 0}
 };
 

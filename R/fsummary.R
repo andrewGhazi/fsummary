@@ -423,10 +423,17 @@ get_stats_df = function(ddf, variables) {
   return(res)
 }
 
+fzscaler = function(x, n) {
+  o = vctrs::vec_order(x)
+  res = vctrs::vec_order(o)
+  sx = x[o]
+  fsummary:::fzscale(sx, o, res, n)
+}
+
 z_scale_df = function(ddff, variables) {
-  ddff |> # 3.7s
+  ddff |>
     mtt(across(variables,
-               fsummary:::fzscale,
+               fzscaler,
                n = nrow(ddff)))
 }
 

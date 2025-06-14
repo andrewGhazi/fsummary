@@ -71,6 +71,111 @@ arma::vec myrank(arma::vec v) {
 }
 
 // [[Rcpp::export]]
+arma::vec asort(arma::vec v) {
+  uvec o = sort_index(v);
+  arma::vec res = conv_to< arma::vec >::from(sort_index(o) + 1) ;
+  // 98% of the time is spent just on the sorting
+  return(res);
+}
+
+//[[Rcpp::export]]
+arma::vec myrank2(arma::vec sv, arma::uvec o, arma::vec res) {
+
+  int n = sv.n_elem;
+
+  o = o - 1;
+  // uvec o = sort_index(v);
+  // arma::vec res = conv_to< arma::vec >::from(sort_index(o) + 1);
+  // arma::vec sv = v(o);
+
+  int uniq_obs = 1;
+
+  for (int i=1; i<n; i++) {
+    // scan through the sorted vector
+    int need_div = 0;
+
+    if (sv(i) == sv(i-1)) {
+      uniq_obs += 1;
+
+      if ((i < (n-1) && sv(i) != sv(i+1)) || ((i+2) > n)) {
+        need_div = 1;
+      }
+    }
+
+    if (need_div) {
+      // set the previous uniq_obs elements of res to their mean
+      double mv = 0;
+
+      for (int j=0; j<uniq_obs; j++) {
+        mv += res(o(i-j));
+      }
+
+      mv /= uniq_obs;
+
+      for (int j=0; j<uniq_obs; j++) {
+        res(o(i-j)) = mv;
+      }
+
+      uniq_obs = 1;
+      need_div = 0;
+    }
+
+  }
+
+  return (res.as_col());
+}
+
+//[[Rcpp::export]]
+arma::vec myrank3(NumericVector v, int n) {
+
+  Environment pkg = Environment::namespace_env("vctrs");
+  Function ord = pkg["vec_order"];
+
+  // int n = v.size();
+
+  NumericVector o = ord(v);
+  for (int i=0; i<n; i++) o[i] = o[i]-1;
+  NumericVector res = ord(o);
+  NumericVector sv = v[o];
+
+  int uniq_obs = 1;
+
+  for (int i=1; i<n; i++) {
+    // scan through the sorted vector
+    int need_div = 0;
+
+    if (sv(i) == sv(i-1)) {
+      uniq_obs += 1;
+
+      if ((i < (n-1) && sv(i) != sv(i+1)) || ((i+2) > n)) {
+        need_div = 1;
+      }
+    }
+
+    if (need_div) {
+      // set the previous uniq_obs elements of res to their mean
+      double mv = 0;
+
+      for (int j=0; j<uniq_obs; j++) {
+        mv += res(o(i-j));
+      }
+
+      mv /= uniq_obs;
+
+      for (int j=0; j<uniq_obs; j++) {
+        res(o(i-j)) = mv;
+      }
+
+      uniq_obs = 1;
+      need_div = 0;
+    }
+
+  }
+
+  return (res);
+}
+
+// [[Rcpp::export]]
 List center_split_df(DataFrame df, IntegerVector c_id, int n_chain, int n_iter) {
   List L(n_chain);
 
@@ -238,9 +343,15 @@ arma::vec fqnorm(arma::vec p) {
 }
 
 // [[Rcpp::export]]
-arma::vec fzscale(arma::vec x, arma::uword n) {
-  return ( fqnorm((myrank(x) - 3.0/8.0) / (n - 2.0 * 3.0/8.0 + 1.0)) );
+arma::vec fzscale(arma::vec sx, arma::uvec o, arma::vec res, arma::uword n) {
+  return ( fqnorm((myrank2(sx, o, res) - 3.0/8.0) / (n - 2.0 * 3.0/8.0 + 1.0)) );
 }
+
+
+// // [[Rcpp::export]]
+// arma::vec fzscale(NumericVector x, arma::uword n) {
+//   return ( fqnorm((myrank3(x, n) - 3.0/8.0) / (n - 2.0 * 3.0/8.0 + 1.0)) );
+// }
 
 // // [[Rcpp::export]]
 // DataFrame dfranks(DataFrame df) {
