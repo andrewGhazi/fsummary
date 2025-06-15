@@ -110,6 +110,17 @@ bench::mark(fsummary(ddf))
       <bch:expr>    <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
     1 fsummary(ddf)    374ms    395ms      2.53     926KB        0     2     0      790ms
 
+(Though I don’t think `bench::mark()` measures the memory usage
+correctly when used with `mirai`…)
+
+With convergence measures, `fsummary` doesn’t benefit from
+parallelization quite as much as `posterior` does, but it doesn’t look
+like the latter could catch up. Without convergence measures, `fsummary`
+widens the gap even further. This benchmark was run on a slightly harder
+example with `n_iter = 2000` and `n_var = 4000`:
+
+![](man/figures/par_comparison.png)
+
 # TODO
 
 - ✔ ~~parallelization with `mirai`~~
