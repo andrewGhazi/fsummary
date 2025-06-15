@@ -583,7 +583,7 @@ get_folded_with_meds = function(ddf, variables, n_iter, n_chain, half_iter) {
 #'   \link[posterior]{summarise_draws} with two minor differences:
 #' \itemize{
 #'   \item{it produces a \link[data.table]{data.table} instead of a \link[tibble]{tibble}}
-#'   \item{there can be negligible floating point error way out past the decimal point}
+#'   \item{there can be negligible floating point error way out past the decimal point (tests are checked to a tolerance of 1e-6)}
 #' }
 #'
 #' @param ddf a draws_df

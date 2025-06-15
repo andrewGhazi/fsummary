@@ -23,7 +23,7 @@ This function quickly computes the same thing as
   \link[posterior]{summarise_draws} with two minor differences:
 \itemize{
   \item{it produces a \link[data.table]{data.table} instead of a \link[tibble]{tibble}}
-  \item{there can be negligible floating point error way out past the decimal point}
+  \item{there can be negligible floating point error way out past the decimal point (tests are checked to a tolerance of 1e-6)}
 }
 }
 \details{
