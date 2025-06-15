@@ -115,8 +115,8 @@ bench::mark(fsummary(ddf))
 - ✔ ~~parallelization with `mirai`~~
   - ✔ ~~Something broke. Fix it.~~
 - faster convergence metrics with better ✔ ~~ranking~~ / ✔ ~~qnorm~~
-  - re-implemented qnorm in C++ and used `vctrs` for `vec_order` which
-    is the slow step in computing rankings.
+  - re-implemented qnorm in C++ and used `radixorder` which is the slow
+    step in computing rankings.
 - ✔ ~~Option for FFT autocovariance if user knows they have badly
   converged parameters~~
 - Submission to CRAN. If you use / want to use this package and it would
