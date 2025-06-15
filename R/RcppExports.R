@@ -5,20 +5,8 @@ cov_head <- function(x, n, offset) {
     .Call(`_fsummary_cov_head`, x, n, offset)
 }
 
-myrank <- function(v) {
-    .Call(`_fsummary_myrank`, v)
-}
-
-asort <- function(v) {
-    .Call(`_fsummary_asort`, v)
-}
-
-myrank2 <- function(sv, o, res) {
-    .Call(`_fsummary_myrank2`, sv, o, res)
-}
-
-myrank3 <- function(v, n) {
-    .Call(`_fsummary_myrank3`, v, n)
+myrank <- function(sv, o, res) {
+    .Call(`_fsummary_myrank`, sv, o, res)
 }
 
 center_split_df <- function(df, c_id, n_chain, n_iter) {
