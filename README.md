@@ -57,7 +57,7 @@ fsummary(ddf) |> head()
 #> 6:       V6 -0.00366 -0.000109 1.000 1.013 -1.66  1.66     1     3547     3824
 ```
 
-On one core, it’s about 4 times faster than `summarise_draws()` when
+On one core, it’s about 4.5 times faster than `summarise_draws()` when
 computing convergence metrics and 5-6 times faster without. A couple
 quick tests on my machine:
 
@@ -78,8 +78,8 @@ bench::mark(fsummary = {fsummary(ddf)},
 
       expression      min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
       <bch:expr> <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
-    1 fsummary      1.45s    1.46s     0.648    1.29GB     6.80    10   105     15.44s
-    2 posterior     6.26s    6.43s     0.156    5.13GB     3.80    10   244      1.07m
+    1 fsummary       1.3s    1.32s     0.727    1.29GB     8.07    10   111     13.76s
+    2 posterior     6.16s    6.29s     0.157    5.13GB     4.03    10   257      1.06m
 
 ``` r
 bench::mark(fsummary = {fsummary(ddf,
@@ -93,8 +93,8 @@ bench::mark(fsummary = {fsummary(ddf,
 
       expression      min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
       <bch:expr> <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
-    1 fsummary    187.7ms  194.3ms     5.06     92.1MB     3.04    10     6      1.98s
-    2 posterior      1.1s    1.14s     0.838     759MB     4.19    10    50     11.94s
+    1 fsummary    185.1ms 193.76ms     4.56     92.1MB     2.28    10     5      2.19s
+    2 posterior      1.1s    1.13s     0.846     759MB     4.57    10    54     11.82s
 
 ![](man/figures/comparison.png)
 
@@ -103,14 +103,12 @@ You can set up daemons with
 
 ``` r
 mirai::daemons(4, dispatcher = FALSE)
-system.time({fsummary(ddf)})
+bench::mark(fsummary(ddf))
 ```
 
-       user  system elapsed 
-      0.011   0.018   0.659 
-
-(This helps more once you have summaries that take longer than a
-second!)
+      expression         min   median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
+      <bch:expr>    <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
+    1 fsummary(ddf)    374ms    395ms      2.53     926KB        0     2     0      790ms
 
 # TODO
 

@@ -424,8 +424,8 @@ get_stats_df = function(ddf, variables) {
 }
 
 fzscaler = function(x, n) {
-  o = vctrs::vec_order(x)
-  res = vctrs::vec_order(o)
+  o = radixorder(x)
+  res = radixorder(o)
   sx = x[o]
   fsummary:::fzscale(sx, o, res, n)
 }

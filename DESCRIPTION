@@ -16,8 +16,7 @@ Imports:
     mirai,
     Rcpp,
     rlang,
-    stats,
-    vctrs
+    stats
 RoxygenNote: 7.3.2
 LinkingTo: 
     Rcpp,
