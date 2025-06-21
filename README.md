@@ -39,7 +39,7 @@ n_iter = 1000
 n_var = 1000
 
 ddf = rnorm(n_chain * n_iter * n_var) |> 
-  matrix(ncol = n_iter) |> 
+  matrix(ncol = n_var) |> 
   qDT() |> 
   mtt(`.draw` = 1:(n_iter*n_chain),
       `.iteration` = rep(1:n_iter, times = n_chain),
